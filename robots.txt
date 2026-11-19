@@ -1,0 +1,6 @@
+# Transformer 动画教程 · 允许所有搜索引擎抓取
+User-agent: *
+Allow: /
+
+# 站点地图位置（绝对地址，必须是完整 URL）
+Sitemap: https://bi-ba-bu.github.io/Transformer-study/sitemap.xml

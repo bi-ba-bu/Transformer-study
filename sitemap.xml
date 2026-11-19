@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!--
+    本站是单页应用式教程，全部 29 章内容都在 index.html 内。
+    注意：锚点（#glossary 等）不会被搜索引擎当作独立页面，
+    所以这里只能提交首页这一个 URL。想提高收录面，见 README「SEO」一节。
+  -->
+  <url>
+    <loc>https://bi-ba-bu.github.io/Transformer-study/</loc>
+    <lastmod>2026-11-19</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>

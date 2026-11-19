@@ -3,7 +3,53 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Transformer 动画教程 · 从导数到自注意力</title>
+<title>Transformer 动画教程 · 从导数到自注意力（中文零基础图解）</title>
+
+<!-- ===== 搜索引擎基础信息 ===== -->
+<meta name="description" content="面向零基础的中文 Transformer 交互动画教程。从导数、梯度下降、点积、softmax 讲起，一路推到 Q/K/V、自注意力、多头、残差、LayerNorm 与完整前向传播。25 个可拖参数的 Canvas 动画，27 章逐步手算，52 个数学符号速查，纯静态可离线打开。">
+<meta name="keywords" content="Transformer,自注意力,self-attention,注意力机制,动画教程,深度学习,机器学习入门,点积,softmax,QKV,多头注意力,位置编码,LayerNorm,残差连接,反向传播,梯度下降,大模型,零基础,中文教程">
+<meta name="author" content="bi-ba-bu">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<link rel="canonical" href="https://bi-ba-bu.github.io/Transformer-study/">
+
+<!-- ===== 社交分享卡片 ===== -->
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Transformer 动画教程">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:title" content="用动画看懂 Transformer：从导数到自注意力">
+<meta property="og:description" content="从「导数到底在算什么」一路推到 softmax(QKᵀ/√d)·V。25 个可暂停、可拖参数的动画，27 章每章配手算，零基础也能读。">
+<meta property="og:url" content="https://bi-ba-bu.github.io/Transformer-study/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="用动画看懂 Transformer：从导数到自注意力">
+<meta name="twitter:description" content="从「导数到底在算什么」一路推到 softmax(QKᵀ/√d)·V。25 个可暂停、可拖参数的动画，27 章每章配手算。">
+
+<!-- ===== 结构化数据（帮搜索引擎理解这是一份教学文章） ===== -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "用动画看懂 Transformer：从导数到自注意力",
+  "description": "面向零基础的中文 Transformer 交互动画教程，覆盖导数、梯度下降、点积、softmax、Q/K/V、自注意力、多头、残差、LayerNorm 与完整前向传播。",
+  "inLanguage": "zh-CN",
+  "url": "https://bi-ba-bu.github.io/Transformer-study/",
+  "mainEntityOfPage": "https://bi-ba-bu.github.io/Transformer-study/",
+  "author": {
+    "@type": "Person",
+    "name": "bi-ba-bu",
+    "url": "https://github.com/bi-ba-bu"
+  },
+  "isAccessibleForFree": true,
+  "keywords": "Transformer, 自注意力, 注意力机制, 深度学习, softmax, QKV, 多头注意力, 位置编码, 教程",
+  "about": [
+    { "@type": "Thing", "name": "Transformer 神经网络架构" },
+    { "@type": "Thing", "name": "自注意力机制" },
+    { "@type": "Thing", "name": "深度学习" }
+  ],
+  "learningResourceType": "教程",
+  "educationalLevel": "入门"
+}
+</script>
+
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>

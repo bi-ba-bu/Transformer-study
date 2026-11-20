@@ -1,0 +1,103 @@
+  <section class="chapter" data-num="17" data-short="加权求和 V">
+    <div class="ch-head"><span class="ch-num">17</span><h2>加权求和：注意力真正“取走”的东西</h2></div>
+
+    <div class="case">
+      <b>案例走到哪了</b>
+      「它」的权重是 <code>[0.095, 0.035, 0.702, 0.035, 0.035, 0.064, 0.035]</code>。
+      这一章用这些权重混合 7 个 V，得到「它」的新表示
+      <code>[0.13, 0.05, 0.73, 0.04]</code>。
+    </div>
+
+    <div class="plain">
+      <b>说人话</b>
+      权重是“取多少”的百分比。给「老鼠」70.2%，就从「老鼠」的 V 里取七成；
+      给「小猫」9.5%，就取不到一成。把所有取到的内容按比例加起来，
+      就是「它」这一轮吸收到的上下文。
+    </div>
+
+    <div class="note">
+      <b>这一章要解决什么</b>
+      上一章只算出了权重，还什么都没取走。这一章用权重混合 V，注意力公式就完整了。
+    </div>
+
+    <h3>完整公式</h3>
+
+    <div class="math">
+      Attention(Q, K, V) = softmax( Q·Kᵀ / √d<sub>k</sub> ) · V
+    </div>
+
+    <p>拆开只有三件事：</p>
+
+    <ol>
+      <li><code>Q·Kᵀ</code>：算每个词对每个词的匹配分</li>
+      <li><code>softmax(...)</code>：把每行分数变成分配比例</li>
+      <li><code>... · V</code>：按比例把各词的 V 混合起来</li>
+    </ol>
+
+    <h3>手算一遍：它取走了什么</h3>
+
+    <p>承接上一章的权重，7 个词的 V 是：</p>
+
+    <div class="math">
+      V小猫 = [1, 0, 0, 0]<br>
+      V追　 = [0, 1, 0, 0]<br>
+      V老鼠 = [0, 0, 1, 0]<br>
+      V，　 = [0, 0, 0, 0]<br>
+      V因为 = [0, 0, 0, 1]<br>
+      V它　 = [0.5, 0, 0.5, 0]<br>
+      V饿了 = [0, 0.5, 0, 1]
+    </div>
+
+    <div class="math">
+      输出 = 0.095×V小猫 + 0.035×V追 + <span class="hl">0.702×V老鼠</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ 0.035×V， + 0.035×V因为 + 0.064×V它 + 0.035×V饿了<br><br>
+      第 1 维：0.095×1 + 0.064×0.5 = <span class="hl">0.127</span><br>
+      第 2 维：0.035×1 + 0.035×0.5 = <span class="hl">0.0525</span><br>
+      第 3 维：0.702×1 + 0.064×0.5 = <span class="hl">0.734</span><br>
+      第 4 维：0.035×1 = <span class="hl">0.035</span><br><br>
+      输出 ≈ <span class="hl">[0.13, 0.05, 0.73, 0.04]</span>
+    </div>
+
+    <p>
+      第三维最大，因为「老鼠」的 V 主要落在第三维，而「它」又把 70.2% 的权重给了「老鼠」。
+      这就是“输出主要取走了老鼠的内容”的具体含义。
+    </p>
+
+    <div class="anim-block" data-scene="attention-mix">
+      <div class="anim-bar">
+        <div class="anim-title">权重 × V 的加权混合</div>
+        <div class="anim-ctrl"><button data-act="play">暂停</button></div>
+      </div>
+      <div class="canvas-wrap"><canvas></canvas></div>
+      <div class="anim-readout"></div>
+    </div>
+
+    <h3>形状怎么变</h3>
+
+    <div class="math">
+      权重 [7,7] × V [7,4] → 输出 [7,4]
+    </div>
+
+    <p>
+      每个 token 的输出是一个固定 4 维向量，和序列长度 n 无关；
+      但整体形状仍然是 <code>[n,4]</code>，第一维就是 token 数。
+      不要把它记成“输出和 n 无关”——准确说法是“每个 token 的表示维度固定”。
+    </p>
+
+    <div class="key">
+      <b>一句话记住</b>
+      权重决定“取多少”，V 决定“取什么”。加权求和 = 按比例把所有词的内容混成当前词的新表示。
+    </div>
+
+    <div class="warn">
+      <b>常见误解：注意力一定很稀疏</b>
+      实际模型里，很多头确实会把权重集中在少数位置，但不是定理。
+      有的头看得很散，有的头几乎平均分配。不要用“稀疏”去解释所有注意力图。
+    </div>
+
+    <div class="note">
+      <b>一个容易忽略的点</b>
+      这一步对所有位置同时算，因为矩阵乘法天然并行。
+      不像 RNN 必须等前一个位置算完才能算下一个，这也是 Transformer 能跑得快的原因之一。
+    </div>
+  </section>

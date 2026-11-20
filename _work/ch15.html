@@ -1,0 +1,122 @@
+  <section class="chapter" data-num="15" data-short="Q / K / V">
+    <div class="ch-head"><span class="ch-num">15</span><h2>Q / K / V：一个词分裂成三个角色</h2></div>
+
+    <div class="case">
+      <b>案例走到哪了</b>
+      现在要解释「它」为什么看「老鼠」。同一个 x它 乘三个矩阵，得到三套表示：
+      Q它 <code>[2,0,4,0]</code>、K它 <code>[0.2,0,0.2,0]</code>、V它 <code>[0.5,0,0.5,0]</code>。
+      老鼠的 K 是 <code>[1,0,1,0]</code>，V 是 <code>[0,0,1,0]</code>。
+    </div>
+
+    <div class="plain">
+      <b>说人话</b>
+      同一个词要同时做三件事：我在找什么（Q）、我挂什么标签让别人找到我（K）、
+      我被找到后能给出什么内容（V）。三件事挤在一个向量里会互相打架，
+      所以用三个矩阵把它拆成三套表示。
+    </div>
+
+    <div class="note">
+      <b>这一章要解决什么</b>
+      说清 Q、K、V 各自负责什么，以及为什么不能用一个向量兼任三职。
+    </div>
+
+    <h3>先看问题：一个词要同时做三件事</h3>
+
+    <p>
+      在「小猫追老鼠，因为它饿了」里，「它」需要找到「老鼠」。
+      这个动作可以拆成三步：
+    </p>
+
+    <table class="tb">
+      <thead><tr><th>角色</th><th>回答的问题</th><th>在案例里</th><th>查字典的类比</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong style="color:var(--cyan)">Q</strong> · Query</td>
+          <td>我在找什么？</td>
+          <td>「它」发出“找动物”的请求</td>
+          <td>你在搜索框里输入的关键词</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--pink)">K</strong> · Key</td>
+          <td>我挂什么标签？</td>
+          <td>「老鼠」挂上“动物、可指代”的标签</td>
+          <td>词条的索引 / 标题</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--green)">V</strong> · Value</td>
+          <td>被选中后给什么内容？</td>
+          <td>「老鼠」给出自己的语义内容</td>
+          <td>词条的正文解释</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>
+      做法很直接：把同一个输入矩阵 X，乘上三个<strong>不同的可学习矩阵</strong>：
+    </p>
+
+    <div class="math">
+      Q = X · W_Q　　K = X · W_K　　V = X · W_V
+    </div>
+
+    <p>
+      X 的形状是 <code>[7,4]</code>（7 个词，每个 4 维），
+      W 是 <code>[4,4]</code>，所以 Q、K、V 仍然是 <code>[7,4]</code>。
+      形状没变，变的是“每个词被表示成什么”。
+    </p>
+
+    <div class="anim-block" data-scene="qkv">
+      <div class="anim-bar">
+        <div class="anim-title">同一个 X，三个权重矩阵，三套表示</div>
+        <div class="anim-ctrl"><button data-act="play">暂停</button></div>
+      </div>
+      <div class="canvas-wrap"><canvas></canvas></div>
+      <div class="anim-readout"></div>
+    </div>
+
+    <h3>手算一遍：矩阵乘法在做什么</h3>
+
+    <p>
+      先用一个 3 维小例子看清乘法（这不是案例数字）：
+    </p>
+
+    <div class="math">
+      x = [1, 0, 1]<br><br>
+      W_Q = [[1, 0],<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[0, 1],<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1, 1]]<br><br>
+      Q = x · W_Q<br>
+      &nbsp;&nbsp;= 1×[1,0] + 0×[0,1] + 1×[1,1]<br>
+      &nbsp;&nbsp;= [1,0] + [0,0] + [1,1] = <span class="hl">[2, 1]</span>
+    </div>
+
+    <p>
+      <code>x</code> 是 <code>[1,3]</code>，<code>W_Q</code> 是 <code>[3,2]</code>，
+      结果 <code>[1,2]</code>。矩阵乘法就是“把 x 的每一维，按 W 的列重新组合一遍”。
+    </p>
+
+    <p>
+      回到案例：Q它 的 <code>[2,0,4,0]</code> 就是这么来的，
+      只是维度从 3 换成了 4。真实模型里 W 通常是 <code>[768,768]</code>，
+      维数不变，但内容被重新组合。
+    </p>
+
+    <div class="key">
+      <b>为什么不能用一个向量兼任三职</b>
+      “用来匹配的特征”和“用来传递的内容”本来就不该是同一套东西。
+      拆开之后，模型可以学出更灵活的匹配规则：
+      一个词可以用 A 特征去提问，用 B 特征去被匹配，用 C 特征去提供内容。
+    </div>
+
+    <div class="note">
+      <b>三个 W 是训练出来的</b>
+      <code>W_Q</code>、<code>W_K</code>、<code>W_V</code> 都是梯度下降更新的参数。
+      没有人手工规定“第 3 维代表动物”；这些分工是训练自己长出来的。
+    </div>
+
+    <div class="warn">
+      <b>常见误解</b>
+      Q、K、V 不是三个不同的输入。它们都来自<strong>同一个 X</strong>，
+      只是乘了不同的矩阵。所以叫“自”注意力：自己在自己身上做注意力。
+    </div>
+  </section>

@@ -1,0 +1,116 @@
+<section class="chapter" data-num="23" data-short="FFN">
+  <div class="ch-head"><span class="ch-num">23</span><h2>FFN：给每个 token 做一次非线性加工</h2></div>
+
+  <div class="case">
+    <b>案例走到哪了</b>
+    第 22 章把「它」的向量归一到 <code>[0.822, -1.151, 1.151, -0.822]</code>。
+    这一章让它过一个 4→16→4 的 FFN：W1 是 4×16，W2 是 16×4，两个权重矩阵共 128 个参数。
+  </div>
+
+  <div class="plain">
+    <b>说人话</b>
+    注意力负责让词和词交换信息，FFN 负责让每个词自己再加工一遍。在迷你输入法里，「老鼠」的 4 维向量先展开成 16 维，过一道筛选，再压回 4 维。它不改变序列长度，也不让 token 互相说话。这一步每个词各算各的，互不干扰。
+  </div>
+
+  <div class="note">
+    <b>这一章要解决什么</b>
+    注意力只是 Block 的一半。这一章看另一半：FFN 怎么升维、怎么被所有 token 共用，
+    以及它为什么占了大部分参数。
+  </div>
+
+  <h3>和注意力怎么分工</h3>
+
+  <p>
+    FFN（前馈网络）是 Block 里逐 token 的两层全连接网络。
+    教学模型里它把 4 维升到 16 维，再降回 4 维。
+  </p>
+
+  <p>
+    一个 Block 里，注意力负责跨 token 混合信息；FFN 对每个位置独立处理。
+    两者串行，先混合，再加工。
+  </p>
+
+  <p>
+    可以想成开会和会后整理：注意力像开会交换信息，
+    FFN 像各自回到工位，把拿到的内容消化成自己的笔记。
+  </p>
+
+  <h3>结构：升维、激活、降维</h3>
+
+  <div class="math">
+    FFN(x) = W₂ · ReLU(W₁x + b₁) + b₂
+  </div>
+
+  <p>
+    W₁ 把 d 维升到 d_ff 维，ReLU 把负数截成 0，W₂ 再降回 d 维。
+    中间维度通常取 4d。
+  </p>
+
+    <div class="anim-block" data-scene="ffn">
+      <div class="anim-bar">
+        <div class="anim-title">升维 → 激活 → 降维（逐 token 独立）</div>
+        <div class="anim-ctrl"><button data-act="play">暂停</button></div>
+      </div>
+      <div class="canvas-wrap"><canvas></canvas></div>
+      <div class="anim-readout"></div>
+    </div>
+
+  <h3>用 d = 4 算参数</h3>
+
+  <p>教学模型里 d = 4，取 d_ff = 16：</p>
+
+  <div class="math">
+    <span class="op">// W₁：4 维 → 16 维</span><br>
+    4 × 16 = <span class="hl">64</span> 个参数<br><br>
+    <span class="op">// W₂：16 维 → 4 维</span><br>
+    16 × 4 = <span class="hl">64</span> 个参数<br><br>
+    <span class="op">// 合计</span><br>
+    64 + 64 = <span class="hl">128</span> 个参数
+  </div>
+
+  <p>
+    这里只数两个权重矩阵。若把偏置也算上，b₁ 有 16 个、b₂ 有 4 个，
+    总共 148 个参数。
+  </p>
+
+  <p>
+    同一组 W₁、W₂ 被 7 个 token 共用。
+    所以序列从 7 个 token 变成 128 个 token，FFN 的参数数量不变。
+  </p>
+
+  <h3>真实模型为什么是 4 倍</h3>
+
+  <p>
+    换成 d = 768、d_ff = 3072：
+    W₁ 和 W₂ 各有 768 × 3072 = 2,359,296 个参数，FFN 合计 4,718,592 个。
+  </p>
+
+  <p>
+    同一层注意力有 4 个 768×768 矩阵，合计 2,359,296 个参数。
+    FFN 约占两者的 66.7%，也就是三分之二。
+  </p>
+
+  <p>
+    升维的作用是给非线性变换更多可组合的维度。
+    在 4 维里能组合的特征有限，展开到 16 维后可以同时筛更多组合，再压回 4 维。
+  </p>
+
+  <p>
+    有研究认为，大量事实性知识存放在 FFN 的权重里。
+    这更适合当作一个观察角度，不同模型和任务会有差异。
+  </p>
+
+  <div class="key">
+    <b>关键理解</b>
+    FFN 逐 token 独立，token 之间不直接交换信息。
+    跨 token 的混合由注意力负责；一个管信息流动，一个管信息加工。
+    开完会总要有人整理笔记，但整理不能代替开会。
+  </div>
+
+  <div class="warn">
+    <b>常见误解</b>
+    参数占三分之二，不等于 FFN 更重要。
+    去掉注意力，模型无法看上下文；去掉 FFN，模型少了主要的非线性加工。
+    分工不同，不能只按参数量排座次。
+  </div>
+</section>

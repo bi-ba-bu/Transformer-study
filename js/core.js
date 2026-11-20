@@ -569,6 +569,30 @@
     return scene;
   }
 
+  function buildPlainToggle() {
+    const btn = document.getElementById('plain-toggle');
+    if (!btn) return;
+    const key = 'tut-plain-mode';
+    function apply(on) {
+      document.body.classList.toggle('plain-mode', on);
+      btn.classList.toggle('on', on);
+      btn.textContent = on ? '白话模式：已开启' : '白话模式：只看主线';
+    }
+    let saved = false;
+    const q = new URLSearchParams(location.search);
+    if (q.has('plain')) {
+      saved = q.get('plain') === '1';
+    } else {
+      try { saved = localStorage.getItem(key) === '1'; } catch (e) {}
+    }
+    apply(saved);
+    btn.addEventListener('click', function () {
+      const on = !document.body.classList.contains('plain-mode');
+      apply(on);
+      try { localStorage.setItem(key, on ? '1' : '0'); } catch (e) {}
+    });
+  }
+
   /** 页面入口 */
   function boot() {
     const scenes = [];
@@ -580,6 +604,7 @@
     ensureLoop();
     buildToc();
     buildProgress();
+    buildPlainToggle();
     // 符号速查表要在正文就绪后再扫，否则扫不到动态生成的目录
     if (TUT.buildGlossary) TUT.buildGlossary();
   }

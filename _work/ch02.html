@@ -1,0 +1,151 @@
+  <section class="chapter" data-num="02" data-short="链式法则">
+    <div class="ch-head"><span class="ch-num">02</span><h2>链式法则：把局部变化率串起来</h2></div>
+
+    <div class="case">
+      <b>案例走到哪了</b>
+      第 01 章留下一个数：w = 0.50 时，loss 对 w 的斜率约 −1.84。
+      这一章把它拆成三段：loss 对概率、概率对打分、打分对 w，三段相乘正好是 −1.84。
+    </div>
+
+    <div class="plain">
+      <b>说人话</b>
+      输入法不是拧一下旋钮就直接改 loss 的，中间隔着“打分、变概率、算损失”几道工序。
+      想知道最终该往哪边调，得把每道工序的敏感度依次乘起来。
+      链式法则就是这条乘法链；反向传播沿着它从结果一层层往回走。
+      这一步先不急着改模型，它只负责把“该调多少”算清楚。
+    </div>
+
+    <div class="note">
+      <b>这一章要解决什么</b>
+      搞懂“多层嵌套的函数，导数怎么算”。
+      学完你能把 loss 对 w 的斜率拆成几个局部导数，并说明它们为什么相乘。
+    </div>
+
+    <h3>复合：一道工序接一道工序</h3>
+
+    <p>
+      “复合”就是把一个函数的输出，交给下一个函数当输入。
+      迷你输入法里，w 先变成打分 s，s 再变成概率 p，p 再变成 loss。
+      三步串成一条流水线。
+    </p>
+
+    <p>
+      这里的 σ 是 sigmoid：把任意打分压到 0 到 1 之间的函数。
+      比如打分 0 对应 0.5，打分越大，概率越接近 1。
+      为了先讲清链式法则，这里把问题简化成“老鼠 vs 其他”的二选一；
+      第 09 章再换成多候选的 softmax。
+    </p>
+
+    <div class="math">
+      w → <span class="hl">s = 2w + b</span> → <span class="hl">p = σ(s)</span> → <span class="hl">L = −ln(p)</span>
+    </div>
+
+    <p>
+      先看一个能心算的两层例子：<code>u = 2x + 1</code>，<code>y = u²</code>。
+      x = 1.5 时，u = 4，y = 16。
+    </p>
+
+    <p>
+      要算“x 变一点，y 变多少”，就分别看每一层：
+      x 的微小变化先被第一层变成 2 倍，u 的变化再被第二层变成 8 倍。
+      两级乘起来，总变化率是 16 倍。
+    </p>
+
+    <div class="math">
+      dy/dx = <span class="hl">f′(u)</span> · <span class="hl">g′(x)</span>
+      &nbsp;&nbsp;<span class="op">// 外层导数 × 内层导数</span>
+    </div>
+
+    <p>
+      为什么乘而不是加？因为第二层放大的是“第一层已经放大过的变化”。
+      第一层把变化变成 2 份，第二层再把这 2 份各放大 8 倍，结果就是 16 份。
+    </p>
+
+    <p>拖动滑块，看 x、u、y 和三个导数值怎么一起动：</p>
+
+    <div class="anim-block" data-scene="chain-rule">
+      <div class="anim-bar">
+        <div class="anim-title">复合函数的变化率是怎么乘出来的</div>
+        <div class="anim-ctrl">
+          <span class="param"><span class="param-label">x</span>
+            <input type="range" data-param="x" min="-2" max="2" step="0.05" value="1.5">
+            <span class="param-value"></span>
+          </span>
+          <button data-act="play">暂停</button>
+        </div>
+      </div>
+      <div class="canvas-wrap"><canvas></canvas></div>
+      <div class="anim-readout"></div>
+    </div>
+
+    <h3>手算一遍：两层复合</h3>
+
+    <div class="math">
+      <span class="op">// 当 x = 1.5</span><br>
+      u = 2×1.5 + 1 = <span class="hl">4</span><br>
+      y = 4² = <span class="hl">16</span><br><br>
+      <span class="op">// 两个局部导数</span><br>
+      g′(x) = d(2x+1)/dx = 2<br>
+      f′(u) = d(u²)/du = 2u = 2×4 = 8<br><br>
+      <span class="op">// 相乘</span><br>
+      dy/dx = 8 × 2 = <span class="hl">16</span>
+    </div>
+
+    <p>
+      验证一下：把 y 展开成 <code>y = (2x+1)² = 4x² + 4x + 1</code>，
+      导数 <code>8x + 4</code>，代入 x = 1.5 也得 16。
+    </p>
+
+    <h3>把 −1.84 拆成三段</h3>
+
+    <p>
+      现在回到迷你输入法。当前 p = 0.08，w = 0.50。
+      打分写成 <code>s = 2w + b</code>，b 是固定偏置，这里不更新；
+      概率由 sigmoid 从打分得到。
+    </p>
+
+    <p>三段局部导数分别是：</p>
+
+    <div class="math">
+      <span class="op">// ① loss 对概率</span><br>
+      dL/dp = −1/p = −1/0.08 = <span class="hl">−12.5</span><br><br>
+      <span class="op">// ② 概率对打分（sigmoid 的导数）</span><br>
+      dp/ds = p(1−p) = 0.08×0.92 = <span class="hl">0.0736</span><br><br>
+      <span class="op">// ③ 打分对 w</span><br>
+      ds/dw = <span class="hl">2</span>
+    </div>
+
+    <p>三段相乘：</p>
+
+    <div class="math">
+      dL/dw = (−12.5) × 0.0736 × 2 ≈ <span class="hl">−1.84</span>
+    </div>
+
+    <p>
+      先看前两段：−12.5 和 0.0736 乘起来约 −0.92。
+      这个数是 loss 对打分的梯度，第 04 章会再解释一次。
+    </p>
+
+    <p>
+      第三段再乘 2，把“打分的变化”换算成“w 的变化”，于是得到 −1.84。
+      每个局部导数只看自己那一道工序，链条把它们接起来。
+    </p>
+
+    <p>
+      回到流水线：反向传播就是从 loss 这一头倒着走，
+      每经过一道工序就乘上它的局部敏感度，最后得到最上游 w 的梯度。
+    </p>
+
+    <div class="key">
+      <b>这就是反向传播</b>
+      反向传播（backpropagation）就是把链式法则从最后一层往前逐层套用。
+      每层只负责自己的局部导数，整条链靠乘法接起来。
+    </div>
+
+    <div class="warn">
+      <b>连乘带来的现实问题</b>
+      如果很多层的局部导数都小于 1，连乘几十层后会变得很小，这叫<strong>梯度消失</strong>。
+      反过来，若很多层都大于 1，连乘会迅速变大，这叫<strong>梯度爆炸</strong>。
+      第 21 章的残差连接，就是缓解这个问题的一种结构。
+    </div>
+  </section>

@@ -1,0 +1,126 @@
+  <section class="chapter" data-num="24" data-short="完整前向传播">
+    <div class="ch-head"><span class="ch-num">24</span><h2>把零件装起来：一次完整前向</h2></div>
+
+    <div class="case">
+      <b>案例走到哪了</b>
+      所有零件都齐了。输入「小猫 追」，经过 embedding、Q/K/V、注意力、FFN，
+      最后得到 <code>[2,V]</code> 的概率表。位置 1 上，「老鼠」拿到 <strong>0.62</strong>，排第一。
+    </div>
+
+    <div class="plain">
+      <b>说人话</b>
+      这一步不再讲新零件，而是把前面的东西按顺序接起来：
+      文字变 ID，ID 变向量，向量算注意力，注意力结果再过 FFN，
+      最后乘一个“词表矩阵”，得到每个候选词的概率。
+    </div>
+
+    <div class="note">
+      <b>这一章要解决什么</b>
+      把 29 章的知识装成一条流水线，算清每一步的张量形状，并知道最后的概率是怎么来的。
+    </div>
+
+    <div class="anim-block" data-scene="full-forward">
+      <div class="anim-bar">
+        <div class="anim-title">一句话进去，下一个词的概率出来</div>
+        <div class="anim-ctrl">
+          <span class="param"><span class="param-label">Block 层数</span>
+            <input type="range" data-param="blocks" min="1" max="48" step="1" value="12" data-digits="0">
+            <span class="param-value"></span>
+          </span>
+          <button data-act="play">暂停</button>
+        </div>
+      </div>
+      <div class="canvas-wrap"><canvas></canvas></div>
+      <div class="anim-readout"></div>
+    </div>
+
+    <h3>七步流水线</h3>
+
+    <table class="tb">
+      <thead><tr><th>步骤</th><th>做什么</th><th>形状</th></tr></thead>
+      <tbody>
+        <tr><td>1. Tokenize</td><td>「小猫 追」→ 两个 ID</td><td><code>[2]</code></td></tr>
+        <tr><td>2. Embedding</td><td>查表，每个 ID 变 4 维向量</td><td><code>[2] → [2,4]</code></td></tr>
+        <tr><td>3. + 位置编码</td><td>加上“第 0 位 / 第 1 位”</td><td><code>[2,4]</code></td></tr>
+        <tr><td>4. Block ×N</td><td>LN → 注意力 → 残差 → LN → FFN → 残差</td><td><code>[2,4]</code></td></tr>
+        <tr><td>5. 最终 LayerNorm</td><td>收尾归一化</td><td><code>[2,4]</code></td></tr>
+        <tr><td>6. LM Head</td><td>乘 <code>[4,V]</code>，映射到词表</td><td><code>[2,4] → [2,V]</code></td></tr>
+        <tr><td>7. Softmax</td><td>每个位置变成概率分布</td><td><code>[2,V]</code></td></tr>
+      </tbody>
+    </table>
+
+    <p>
+      训练时用完整的 7 个 token，形状是 <code>[7,4]</code>；
+      推理产品只输入前两个 token，形状是 <code>[2,4]</code>。
+      流程一模一样，只是 n 不同。
+    </p>
+
+    <h3>案例的形状账本</h3>
+
+    <div class="math">
+      小猫 追<br>
+      → ID: [12, 88]　　　　　　　<span class="op">// [2]</span><br>
+      → 词向量 X: [2, 4]　　　　　 <span class="op">// 2 个 token，每个 4 维</span><br>
+      → Q/K/V: 各 [2, 4]<br>
+      → 分数 Q·Kᵀ: [2, 2]<br>
+      → softmax 权重: [2, 2]　　　 <span class="op">// 每行和为 1</span><br>
+      → 加权 V: [2, 4]<br>
+      → FFN + 残差: [2, 4]<br>
+      → LM Head: [2, V]　　　　　 <span class="op">// V = 50000</span><br>
+      → softmax: [2, V]<br><br>
+      位置 1（「追」之后）的概率：<br>
+      老鼠 <span class="hl">0.62</span>　小猫 0.18　饿了 0.10　其他 …
+    </div>
+
+    <p>
+      为什么取位置 1？因为输入是「小猫 追」，我们要预测「追」后面的词。
+      位置 0 的「小猫」预测的是「追」，不是产品这一步要的答案。
+    </p>
+
+    <h3>参数账：换成真实规模</h3>
+
+    <p>设 d=768、V=50000、N=12：</p>
+
+    <div class="math">
+      每层注意力：4d² = 4×768² ≈ 2.36M<br>
+      每层 FFN：8d² = 8×768² ≈ 4.72M<br>
+      每层合计：12d² ≈ <span class="hl">7.08M</span><br><br>
+      12 层：12×7.08M ≈ <span class="hl">85M</span><br>
+      Embedding：50000×768 ≈ 38.4M<br>
+      总计：85M + 38.4M ≈ <span class="hl">123M</span>
+    </div>
+
+    <p>
+      GPT-2 small 是 124M，用的正是 d=768、N=12、V=50257。
+      手算结果几乎完全吻合。
+    </p>
+
+    <h3>全书案例总账</h3>
+
+    <table class="tb">
+      <thead><tr><th>阶段</th><th>形状</th><th>本书用到的关键数字</th></tr></thead>
+      <tbody>
+        <tr><td>7 个 token</td><td><code>[7]</code></td><td>小猫 12、追 88、老鼠 42、，3、因为 77、它 9、饿了 105</td></tr>
+        <tr><td>词向量 X</td><td><code>[7,4]</code></td><td>老鼠 <code>[0.8,0.2,0.9,0.1]</code>，它 <code>[0.7,0.1,0.8,0.2]</code></td></tr>
+        <tr><td>Q / K / V</td><td>各 <code>[7,4]</code></td><td>Q它 <code>[2,0,4,0]</code>，K老鼠 <code>[1,0,1,0]</code></td></tr>
+        <tr><td>分数 <code>QKᵀ/√d</code></td><td><code>[7,7]</code></td><td>「它」行：老鼠 3.00，小猫 1.00，自己 0.60</td></tr>
+        <tr><td>softmax 权重</td><td><code>[7,7]</code></td><td>「它」给老鼠 0.702</td></tr>
+        <tr><td>加权 V</td><td><code>[7,4]</code></td><td>「它」的输出 <code>[0.13,0.05,0.73,0.04]</code></td></tr>
+        <tr><td>LM Head</td><td><code>[7,V]</code></td><td>产品输入「小猫 追」时，老鼠 0.62</td></tr>
+      </tbody>
+    </table>
+
+    <div class="key">
+      <b>形状账本</b>
+      整个过程中，序列维 n 和特征维 d 一直是 <code>[n,d]</code>，
+      只有最后的 LM Head 才变成 <code>[n,V]</code>。
+      中间的 <code>[n,n]</code> 注意力矩阵是临时结果：
+      训练时反向传播还要用它，推理时不需要长期保存。
+    </div>
+
+    <div class="warn">
+      <b>常见误解：参数量等于能力</b>
+      参数量只决定容量上限，不决定实际能力。数据质量、训练方法、推理策略同样关键。
+      同样 7B 参数，层数深、d 小，和层数浅、d 大，效果也可能差很多。
+    </div>
+  </section>

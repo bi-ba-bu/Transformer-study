@@ -1,0 +1,125 @@
+  <section class="chapter" data-num="09" data-short="softmax 怎么算">
+    <div class="ch-head"><span class="ch-num">09</span><h2>softmax：把分数变成分配比例</h2></div>
+
+    <div class="case">
+      <b>案例走到哪了</b>
+      上一章算出了「它」对 7 个词的分数：
+      <code>[1, 0, 3, 0, 0, 0.6, 0]</code>。
+      这一章把它们变成加起来等于 1 的权重，结果「老鼠」拿到 <strong>70.2%</strong>。
+    </div>
+
+    <div class="plain">
+      <b>说人话</b>
+      分数可以是负数，也可以很大，没法直接当“取走多少内容”的份数。
+      softmax 做三件事：先把每个分数变成正数，再算总和，最后按比例分这 100%。
+      分高的拿得多，但所有人加起来只能拿 100%。
+    </div>
+
+    <div class="note">
+      <b>这一章要解决什么</b>
+      搞懂 softmax 具体怎么算，以及为什么注意力的权重必须“全是正数、加起来等于 1”。
+    </div>
+
+    <h3>为什么非要做这一步</h3>
+
+    <p>
+      注意力下一步要按权重去“吸收”别的词的 V。权重如果是负数，就成了“吸收 −5 份”；
+      如果总分不是 1，吸收的总量又不确定。softmax 就是在解决这两个问题。
+    </p>
+
+    <table class="tb">
+      <thead><tr><th>要求</th><th>为什么</th><th>谁负责</th></tr></thead>
+      <tbody>
+        <tr><td>全是正数</td><td>不能“吸收负数份”</td><td>取 eˣ</td></tr>
+        <tr><td>总和为 1</td><td>总量固定，比例才有意义</td><td>除以总和</td></tr>
+        <tr><td>保持大小顺序</td><td>分高的还应该拿得多</td><td>eˣ 单调递增</td></tr>
+      </tbody>
+    </table>
+
+    <h3>三步，拿案例算一遍</h3>
+
+    <p>原始分数（logits）是「它」这一行：</p>
+
+    <div class="math">
+      z = [1, 0, 3, 0, 0, 0.6, 0]<br><br>
+      <span class="op">① 取指数</span><br>
+      e¹ = 2.718　e⁰ = 1　e³ = 20.086　e⁰·⁶ = 1.822<br>
+      → [2.718, 1, 20.086, 1, 1, 1.822, 1]<br><br>
+      <span class="op">② 求和</span><br>
+      2.718 + 1 + 20.086 + 1 + 1 + 1.822 + 1 = <span class="hl">28.626</span><br><br>
+      <span class="op">③ 每个除以总和</span><br>
+      [0.095, 0.035, <span class="hl">0.702</span>, 0.035, 0.035, 0.064, 0.035]
+    </div>
+
+    <p>
+      读法：「它」把 70.2% 的注意力给了「老鼠」，9.5% 给「小猫」，6.4% 留给自己。
+      这三个数加起来，再加上标点和虚词，正好是 100%。
+    </p>
+
+    <div class="anim-block" data-scene="softmax-steps">
+      <div class="anim-bar">
+        <div class="anim-title">exp → 求和 → 相除，三步逐格演算</div>
+        <div class="anim-ctrl"><button data-act="play">暂停</button></div>
+      </div>
+      <div class="canvas-wrap"><canvas></canvas></div>
+      <div class="anim-readout"></div>
+    </div>
+
+    <h3>为什么用 eˣ，不用绝对值或平方</h3>
+
+    <table class="tb">
+      <thead><tr><th>方案</th><th>变正？</th><th>保序？</th><th>问题</th></tr></thead>
+      <tbody>
+        <tr><td>|x|</td><td>✓</td><td>✗</td><td>把 −5 和 +5 变成同一个数，正负信息丢了</td></tr>
+        <tr><td>x²</td><td>✓</td><td>✗</td><td>同样丢符号，还会把大数放得过大</td></tr>
+        <tr><td>x + C</td><td>✓</td><td>✓</td><td>C 没有天然答案；太小负数还在，太大比例失真</td></tr>
+        <tr><td><strong>eˣ</strong></td><td>✓</td><td>✓</td><td>同时满足，还能把加法差距翻译成倍数差距</td></tr>
+      </tbody>
+    </table>
+
+    <p>
+      取指数还有一个副作用：<strong>拉开差距</strong>。
+      两个分数差 1，取指数后变成约 2.72 倍；差 3，变成约 20 倍。
+      所以分数尺度太大时，softmax 会变得非常尖锐，几乎只选一个词。
+      第 18 章的 <code>/√d</code> 就是来管这件事的。
+    </p>
+
+    <h3>给矩阵做 softmax：一行一行来</h3>
+
+    <p>
+      分数矩阵是 7×7。softmax 对<strong>每一行单独做</strong>：
+      第 i 行代表第 i 个词怎么分配自己的 100% 注意力，和其他行无关。
+    </p>
+
+    <div class="math">
+      第 5 行（它）：[1, 0, 3, 0, 0, 0.6, 0]<br>
+      → [0.095, 0.035, 0.702, 0.035, 0.035, 0.064, 0.035]<br>
+      这一行加起来 = 1 ✓
+    </div>
+
+    <div class="key">
+      <b>一句话记住</b>
+      softmax 不是“变成概率”这么玄，它就是<strong>把任意分数变成总和为 1 的分配比例</strong>。
+      一行里此消彼长：一个词多拿，其他词就必然少拿。
+    </div>
+
+    <div class="warn">
+      <b>实现时最容易错的地方</b>
+      按行归一化，代码里要沿最后一维做：PyTorch 写 <code>softmax(x, dim=-1)</code>。
+      写成 <code>dim=-2</code> 就是按列归一化，形状不报错、数字也不报错，
+      但训练会莫名其妙不收敛。
+    </div>
+
+    <div class="warn">
+      <b>关于 e^−1000</b>
+      数学上它永远大于 0；但浮点数会下溢成 0。
+      所以实际代码先减去最大值再取指数，数学上等价，数值上安全。
+    </div>
+
+    <div class="note">
+      <b>这一章读完后，请自测</b>
+      <b>①</b> 为什么不能用绝对值代替 exp？（会把 −5 和 +5 混成一样）
+      <b>②</b> <code>[0,0,0]</code> 经过 softmax 得到什么？（<code>[1/3,1/3,1/3]</code>）
+      <b>③</b> 一行是 <code>[0.7,0.3]</code>，第一个提高，第二个会怎样？（必然下降）
+    </div>
+  </section>

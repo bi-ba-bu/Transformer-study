@@ -12,3 +12,8 @@ desktop.ini
 # 临时文件
 *.tmp
 *.log
+
+# 写作过程中的临时产物
+_work/*.png
+_work/dom.html
+_work/dom-check.html

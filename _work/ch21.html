@@ -1,0 +1,120 @@
+<section class="chapter" data-num="21" data-short="残差连接">
+  <div class="ch-head"><span class="ch-num">21</span><h2>残差连接：给梯度留一条直通路</h2></div>
+
+  <div class="case">
+    <b>案例走到哪了</b>
+    第 20 章的因果掩码让「它」看不到后面的「饿了」，接下来要把这些零件叠成 12 层 Block。
+    这一章先给每层加一条 <code>x + F(x)</code> 直通路：假设每层导数 0.6，连乘 8 层只剩 0.0168。
+  </div>
+
+  <div class="plain">
+    <b>说人话</b>
+    在迷你输入法里，每一层都会改动「它」的向量。残差的做法是：改完的版本照常往下传，同时把改之前的原向量也原样带过去。这样即使某一层没学到有用的东西，下一层仍能拿到原始信息；反向更新时，也有一条不经过这层的路可以走。
+  </div>
+
+  <div class="note">
+    <b>这一章要解决什么</b>
+    第 02 章说过，反向传播是连乘，局部导数长期小于 1 时梯度会衰减。这一章讲残差怎么缓解它，以及为什么它不能解决所有问题。
+  </div>
+
+  <h3>先看衰减有多快</h3>
+
+  <p>
+    残差连接（residual connection）是在子层输出上再加回输入的结构。
+    例如 x = 2、F(x) = 0.6 时，输出就是 2.6。
+  </p>
+
+  <p>假设每层的局部导数都是 0.6，并且暂时忽略其他因素：</p>
+
+  <div class="math">
+    8 层后：0.6⁸ ≈ <span class="hl">0.0168</span>　→ 只剩 1.7%<br>
+    20 层后：0.6²⁰ ≈ <span class="hl">0.000037</span>　→ 不到万分之一
+  </div>
+
+  <p>
+    层数越深，浅层收到的更新信号越小。
+    早期深层网络难训练，这是原因之一，但不是唯一原因。
+  </p>
+
+  <h3>残差做了什么</h3>
+
+  <div class="math">
+    输出 = x + F(x)
+  </div>
+
+  <p>
+    前向时保留输入，反向时对 x 求导，得到雅可比矩阵：
+  </p>
+
+  <div class="math">
+    ∂(x + F(x)) / ∂x = <span class="hl">I</span> + ∂F/∂x
+  </div>
+
+  <p>
+    这里的 <code>I</code> 是单位矩阵，对应一条恒等直通路。
+    即使 <code>∂F/∂x</code> 很小，这一项仍把信号按原尺度送回去。
+  </p>
+
+  <p>
+    可以把它想成楼梯旁加了一部每层都停的直达电梯：
+    反向信号不必逐层穿过子层，也能回到浅层。
+  </p>
+
+  <div class="key">
+    <b>准确说法</b>
+    残差显著缓解梯度消失，但不承诺"不会消失"。
+    多层雅可比连乘仍可能衰减或爆炸；实际训练还要配合归一化、初始化和学习率。
+  </div>
+
+    <div class="anim-block" data-scene="residual">
+      <div class="anim-bar">
+        <div class="anim-title">有无残差时，梯度的衰减对比</div>
+        <div class="anim-ctrl">
+          <button data-toggle="residual" class="tg on">残差连接</button>
+          <button data-act="play">暂停</button>
+        </div>
+      </div>
+      <div class="canvas-wrap"><canvas></canvas></div>
+      <div class="anim-readout"></div>
+    </div>
+
+  <p>
+    点「残差连接」切换。关掉它，浅层柱子会明显变矮；打开后，各层高度接近。
+    动画为了看清差异，放大了衰减效果。
+  </p>
+
+  <h3>手算一遍</h3>
+
+  <p>设 x = 2，子层输出 F(x) = 0.6，局部导数是 0.3。先看单层：</p>
+
+  <div class="math">
+    <span class="op">// 无残差</span><br>
+    输出 = F(x) = 0.6<br>
+    ∂输出/∂x = 0.3　← 梯度只剩 30%<br><br>
+    <span class="op">// 有残差</span><br>
+    输出 = x + F(x) = 2 + 0.6 = 2.6<br>
+    ∂输出/∂x = 1 + 0.3 = <span class="hl">1.3</span>
+  </div>
+
+  <p>
+    连乘 8 层：无残差是 0.3⁸ ≈ 0.0000656；有残差是 1.3⁸ ≈ 8.16。
+    前者快速衰减，后者则会放大。
+  </p>
+
+  <p>
+    所以残差不是把梯度"修成 1"，而是把一条路径的尺度拉回 1 附近。
+    1.3 连乘 8 层同样危险，这也是深层网络不能只靠残差的原因。
+  </p>
+
+  <div class="key">
+    <b>为什么它重要</b>
+    在这个结构里，残差只做一次加法，不增加参数。
+    它让几十层到上百层的堆叠在实践中更可行，是 ResNet 和 Transformer 的共同基础。
+  </div>
+
+  <div class="warn">
+    <b>常见误解</b>
+    残差不是梯度归一化，也不保证梯度不消失。
+    电梯只是多一条路，子层该学的变换仍要学；梯度尺度还要靠归一化和训练技巧控制。
+  </div>
+</section>

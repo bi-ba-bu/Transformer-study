@@ -1,0 +1,149 @@
+<section class="chapter" data-num="25" data-short="训练 vs 推理">
+  <div class="ch-head"><span class="ch-num">25</span><h2>训练与推理：为什么训练能并行，推理得串行</h2></div>
+
+  <div class="case">
+    <b>案例走到哪了</b>
+    第 24 章把整句话一次送进 12 层，得到 P(老鼠) = 0.62。
+    这一章看同一套权重在两种场景下的跑法：训练时 7 个位置并行，推理时从「小猫 追」开始逐个生成。
+  </div>
+
+  <div class="plain">
+    <b>说人话</b>
+    训练时，答案已经在句子里，输入法可以一次检查 7 个位置的预测，错了就一起改。真正打字时，下一个词还没出现，得先生成一个、接上去，再生成下一个。KV Cache 就是把前面算过的记忆存下来，避免每一步都从头算。
+  </div>
+
+  <div class="note">
+    <b>这一章要解决什么</b>
+    同一套模型，训练和推理的计算方式不同。
+    这一章讲清并行与串行的分界，以及 KV Cache 省了什么、又贵在哪里。
+  </div>
+
+  <h3>训练为什么能并行</h3>
+
+  <p>
+    训练样本是完整句子：小猫 追 老鼠 ， 因为 它 饿了。
+    7 个 token 都已经在输入里。
+  </p>
+
+  <p>
+    因果掩码保证第 i 个位置只看 ≤ i 的位置。
+    于是 7 个位置的预测可以放进同一个矩阵，一次前向全部算出来。
+  </p>
+
+  <p>
+    一次前向得到 7 个训练信号，损失取平均后统一反传。
+    并行来自"答案已知"，不是因为模型天生会并行。
+  </p>
+
+  <h3>推理为什么得串行</h3>
+
+  <p>
+    推理开始时只有「小猫 追」，后面的内容还不存在。
+    要生成下一个词，先要用当前序列算出概率，选出一个 token，接到末尾，再算下一步。
+  </p>
+
+  <p>
+    这个依赖链没法提前展开。
+    每多一个词，序列就长一格，下一步的输入才完整。
+  </p>
+
+    <div class="anim-block" data-scene="train-infer">
+      <div class="anim-bar">
+        <div class="anim-title">并行训练 vs 串行生成</div>
+        <div class="anim-ctrl">
+          <span class="param">
+            <select data-param="mode" aria-label="选择训练或推理模式">
+              <option value="train">训练模式</option>
+              <option value="infer">推理模式</option>
+            </select>
+          </span>
+          <button data-act="play">暂停</button>
+        </div>
+      </div>
+      <div class="canvas-wrap"><canvas></canvas></div>
+      <div class="anim-readout"></div>
+    </div>
+
+  <p>
+    动画里切到训练模式，画出的位置一起亮；切到推理模式，方块逐个出现。
+    差别只在输入是否完整。
+  </p>
+
+  <p>
+    动画为了画面清楚只画了 4 个位置；案例里的句子是 7 个 token，并行方式相同。
+  </p>
+
+  <h3>KV Cache 省了什么</h3>
+
+  <p>
+    KV Cache（键值缓存）是推理时保存历史 token 的 K、V 的机制。
+    例如生成第 100 个 token 时，前 99 个 token 的 K、V 可以直接复用。
+  </p>
+
+  <p>
+    每层里，一个 token 的 K 和 V 只由它在该层的输入向量决定。
+    前面的 token 没变，它们的 K、V 就不会变。
+  </p>
+
+  <p>
+    于是可以把每层已经算过的 K、V 存下来。
+    生成新 token 时，只算这个新 token 的 K、V，再和缓存拼在一起。
+  </p>
+
+  <div class="math">
+    <span class="op">// 不用 KV Cache</span><br>
+    第 n 步重算 n 个位置的 K/V 投影　→ 投影总量 O(n²)<br><br>
+    <span class="op">// 用 KV Cache</span><br>
+    第 n 步只算 1 个新位置的 K/V　→ 投影总量 O(n)
+  </div>
+
+  <p>
+    注意，注意力的点积仍要和全部缓存做。
+    单步是 O(n)，整段仍是 O(n²)；KV Cache 省掉的是重复投影，不是把所有计算都变成线性。
+  </p>
+
+  <h3>显存怎么算</h3>
+
+  <p>
+    以 d = 768、fp16（2 字节）为例。
+    每个 token 在每一层要存 K 和 V 两份：
+  </p>
+
+  <div class="math">
+    768 × 2 × 2 = 3072 字节 = <span class="hl">3KB / token / 层</span>
+  </div>
+
+  <p>
+    这里的 3KB 是"每个 token 在每一层"的 K+V，
+    不是整个模型的总量，也不是每个序列的总量。
+  </p>
+
+  <div class="math">
+    128K 上下文 = 131,072 个 token<br><br>
+    <span class="op">// 单层</span><br>
+    3KB × 131,072 ≈ <span class="hl">384MB</span><br><br>
+    <span class="op">// 32 层</span><br>
+    384MB × 32 ≈ <span class="hl">12GB</span> / 序列<br><br>
+    <span class="op">// batch 32</span><br>
+    12GB × 32 ≈ <span class="hl">384GB</span>
+  </div>
+
+  <p>
+    作为对照，100 个 token、32 层、batch 32：
+    0.3MB × 32 × 32 ≈ 300MB。短上下文很轻，长上下文才会把显存吃满。
+  </p>
+
+  <div class="key">
+    <b>一个反直觉的结论</b>
+    推理的瓶颈常常在显存容量和带宽，而不只是浮点算力。
+    每生成一个 token 都要读一遍权重和缓存，实际做的运算相对少；
+    batch 推理能摊薄权重读取，提高吞吐。
+    代价是缓存占用量随 batch 和上下文线性增长。
+  </div>
+
+  <div class="warn">
+    <b>常见误解</b>
+    KV Cache 不改变模型输出。
+    它缓存的是中间结果，数学上等价于每步重算；如果输出变了，先查实现，而不是怀疑缓存本身。
+  </div>
+</section>

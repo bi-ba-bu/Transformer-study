@@ -1,0 +1,202 @@
+  <section class="chapter" data-num="04" data-short="交叉熵 = loss">
+    <div class="ch-head"><span class="ch-num">04</span><h2>交叉熵：那个“损失”到底是什么</h2></div>
+
+    <div class="case">
+      <b>案例走到哪了</b>
+      第 03 章走完一步，w 从 0.50 到 0.684，老鼠概率从 0.08 升到约 0.10，loss 从 2.526 降到约 2.303。
+      这一章把 loss 这个数定义清楚：它只由正确答案拿到的概率决定。
+    </div>
+
+    <div class="plain">
+      <b>说人话</b>
+      输入法每次会给所有候选一个把握程度，正确答案「老鼠」拿到多少，直接决定这次错得重不重。
+      交叉熵把“把握够不够”这件事压成一个越小越好的分数，
+      训练才有统一的尺子去比较每一步是变好还是变差。
+      同一个分数既能比较不同轮次，也能直接求导，所以从迷你输入法到大型模型都沿用这把尺子。
+    </div>
+
+    <div class="note">
+      <b>这一章要解决什么</b>
+      上一章一直在说“算 loss”，但 loss 具体怎么算还没定义。
+      这一章给出 <code>loss = −ln(p)</code>，并说清它的斜率与真正传回参数的梯度有什么区别。
+    </div>
+
+    <h3>模型输出是一排概率</h3>
+
+    <p>
+      语言模型做的事，是给定前面所有的词，预测下一个词是什么。
+      它不直接说“下一个是老鼠”，而是给词表里每个词一个概率。
+    </p>
+
+    <p>
+      第 24 章会用 V = 50000 的词表，模型一次输出 5 万个概率，加起来等于 1。
+      “这次预测得好不好”，就看正确答案那个词分到了多少。
+    </p>
+
+    <p>
+      迷你输入法里，正确答案是「老鼠」。模型给它 0.08，说明把握很低；
+      给它 0.83，说明把握已经比较高。
+    </p>
+
+    <h3>交叉熵：只看正确答案那一项</h3>
+
+    <p>
+      对单个样本，交叉熵可以写得很短。p 是模型给正确答案的概率，
+      ln 是自然对数：
+    </p>
+
+    <div class="math">
+      loss = −ln( p )<br>
+      <span class="op">// p = 模型给「正确答案」的概率</span>
+    </div>
+
+    <p>这个形式有几个合适的性质：</p>
+
+    <table class="tb">
+      <thead><tr><th>模型给正确答案的概率 p</th><th>loss = −ln(p)</th><th>含义</th></tr></thead>
+      <tbody>
+        <tr><td>1.0（确定且答对）</td><td>0</td><td>没有损失</td></tr>
+        <tr><td>0.9</td><td>0.105</td><td>把握较高</td></tr>
+        <tr><td>0.5</td><td>0.693</td><td>拿不准</td></tr>
+        <tr><td>0.1</td><td>2.303</td><td>把握很低</td></tr>
+        <tr><td>0.001</td><td>6.908</td><td>几乎没给正确答案机会</td></tr>
+      </tbody>
+    </table>
+
+    <p>
+      p 越接近 1，loss 越接近 0；p 越小，loss 上升得越快，但结果非负。
+      这就是训练时要往下压的那个数。
+    </p>
+
+    <div class="anim-block" data-scene="cross-entropy">
+      <div class="anim-bar">
+        <div class="anim-title">loss = −ln(p) 的曲线</div>
+        <div class="anim-ctrl">
+          <span class="param"><span class="param-label">正确答案的概率 p</span>
+            <input type="range" data-param="p" min="0.02" max="1" step="0.005" value="0.6" data-digits="3">
+            <span class="param-value"></span>
+          </span>
+          <button data-act="play">暂停</button>
+        </div>
+      </div>
+      <div class="canvas-wrap"><canvas></canvas></div>
+      <div class="anim-readout"></div>
+    </div>
+
+    <h3>斜率 −1/p，和真正传回去的梯度</h3>
+
+    <p>
+      先看 loss 对概率 p 的斜率，也就是把 p 当自变量：
+    </p>
+
+    <div class="math">
+      dL/dp = −1/p
+    </div>
+
+    <p>
+      p = 0.08 时它是 −12.5，p = 0.01 时它是 −100。
+      这个数看起来很大，但它描述的是“概率轴上的坡度”，不是参数实际收到的更新力度。
+    </p>
+
+    <p>
+      训练并不直接改 p。模型改的是打分 s，再由 s 算出 p。
+      所以还要乘上 p 对 s 的导数，也就是 sigmoid 的 <code>p(1−p)</code>。
+    </p>
+
+    <div class="math">
+      dL/ds = (−1/p) × p(1−p) = −(1−p) = <span class="hl">p − 1</span><br><br>
+      p = 0.08：dL/ds = −0.92<br>
+      p = 0.01：dL/ds = −0.99
+    </div>
+
+    <p>
+      注意 p = 0.01 那一行：dL/dp 是 −100，但乘上 0.0099 之后只剩 −0.99。
+      1/p 被 sigmoid 的导数抵消了，传回打分的梯度大小不超过 1。
+    </p>
+
+    <p>
+      更一般地，如果输出层是 softmax（把一排打分变成概率的函数）加交叉熵，
+      答案用 one-hot（正确项为 1、其余为 0）表示，
+      那么 loss 对每个 logit（也就是打分 s）的梯度就是 <code>pᵢ − yᵢ</code>。
+      正确项是 p−1，其他项是 pᵢ，每个分量都在 −1 到 1 之间。
+    </p>
+
+    <p>
+      所以 −1/p 不能直接当成“越错就改得越猛”。
+      p 越低，loss 确实越大；但传到 logit 的梯度是从 0 附近向 −1 靠近，
+      有上界，不会随着 p 变小而无限放大。
+    </p>
+
+    <p>
+      在迷你输入法里，p = 0.08 时 dL/ds = −0.92。
+      再乘上 <code>ds/dw = 2</code>，才得到第 02 章那个 −1.84。
+    </p>
+
+    <h3>手算一遍</h3>
+
+    <p>
+      为了手算，先把候选缩到 4 个词（教学简化）。正确答案是「老鼠」，
+      模型刚开始的输出是：
+    </p>
+
+    <div class="math">
+      小猫 0.60　它 0.30　老鼠 0.08　饿了 0.02<br><br>
+      loss = −ln(0.08) = <span class="hl">2.526</span>
+    </div>
+
+    <p>训练一段时间后，老鼠的概率到 0.62：</p>
+
+    <div class="math">
+      小猫 0.18　它 0.10　老鼠 0.62　饿了 0.10<br><br>
+      loss = −ln(0.62) = <span class="hl">0.478</span>
+    </div>
+
+    <p>训练得更久，老鼠的概率到 0.83：</p>
+
+    <div class="math">
+      小猫 0.10　它 0.05　老鼠 0.83　饿了 0.02<br><br>
+      loss = −ln(0.83) = <span class="hl">0.186</span>
+    </div>
+
+    <p>
+      2.526 → 0.478 → 0.186，loss 一路下降，说明模型给正确答案的把握在提高。
+    </p>
+
+    <div class="note">
+      <b>为什么叫“交叉熵”</b>
+      完整的交叉熵是 <code>−Σ yᵢ·log(pᵢ)</code>，y 是真实答案的分布。
+      答案是 one-hot 时，求和里只有正确词那一项非零，
+      就退化成了 <code>−log(p_正确)</code>。
+    </div>
+
+    <h3>整句话的 loss</h3>
+
+    <p>
+      一句话有 7 个 token，每个位置都预测下一个词，就得到 7 个 loss。
+      训练时取平均，得到一个标量：
+    </p>
+
+    <div class="math">
+      loss = (1/n) · Σ<sub>i</sub> −ln( p<sub>i</sub> )
+    </div>
+
+    <p>
+      取平均让一次前向传播能同时照顾多个位置，这是第 25 章“训练可以并行”的前提。
+      这里按 7 个位置算是教学简化，真实实现会对齐输入和标签的错位。
+    </p>
+
+    <div class="warn">
+      <b>常见误解</b>
+      loss 不是准确率。准确率看“猜对了几个”，loss 看“给正确答案多少把握”。
+      给老鼠 0.51、其他 0.49，和给老鼠 0.99、其他 0.01，
+      准确率可能一样，但 loss 差很多。训练优化的是 loss。
+    </div>
+
+    <div class="key">
+      <b>小结</b>
+      loss = −ln(模型给正确答案的概率)，概率越高 loss 越小。
+      但真正传回 logit 的梯度是 <code>p − y</code>，大小不超过 1；
+      错得很确定时，梯度接近上限，而不是无限变大。
+      这把尺子量的是概率，不是参数该迈多大的一步。
+    </div>
+  </section>

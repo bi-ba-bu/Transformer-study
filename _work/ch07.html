@@ -1,0 +1,174 @@
+  <section class="chapter" data-num="07" data-short="矩阵 = 空间变换">
+    <div class="ch-head"><span class="ch-num">07</span><h2>矩阵：把 7 个词一起换算</h2></div>
+
+    <div class="case">
+      <b>案例走到哪了</b>
+      第 06 章已经算出「它」和「老鼠」的匹配分：Q它 · K老鼠 = 6，cos ≈ 0.949。
+      这一章把 7 个 token、每个 4 维的 X[7,4] 送进 W_Q[4,4]，一次得到 Q[7,4]。
+      先只盯「它」这一行：x = [0.7, 0.1, 0.8, 0.2] → Q = [2, 0, 4, 0]。
+    </div>
+
+    <div class="plain">
+      <b>说人话</b>
+      输入法要为 7 个 token 各准备一份“提问清单”。与其一个词一个词地算，不如把 7 行排成一张表，用同一套换算规则一次处理完。矩阵就是这套规则的打包写法。这一步产出 Q，下一章再拿它去和 K 打分。
+      词还是 7 个，只是每个词的 4 个数换了组合。
+    </div>
+
+    <div class="note">
+      <b>这一章要解决什么</b>
+      看清 X[7,4] × W_Q[4,4] → Q[7,4] 在做什么：词数没变，每个词的 4 个数被重新组合。
+      不要求把 28 个数全算一遍，只演示「它」这一行。
+    </div>
+
+    <h3>为什么不能一个词一个词算</h3>
+
+    <p>
+      7 个词、每个 4 维。逐个算，就要写 7 套“4 行乘加”的式子。
+      词数一多，写法先变得难维护，零散的小计算也不适合 GPU。
+    </p>
+
+    <p>
+      矩阵把“同一套换算规则”打包成一个 W。7 个词排成 X[7,4]，一次乘法就得到 7 个新向量。
+      规则只有一份，来多少行都照用。
+    </p>
+
+    <div class="key">
+      <b>矩阵的第一层含义</b>
+      它是一套固定变换的批量写法。参数在 W 里，不在数据里；所以词数变化，参数量不变。
+    </div>
+
+    <h3>矩阵是一个动作，不是一堆格子</h3>
+
+    <p>
+      把矩阵看成“把空间里的点搬到新位置”的动作，比背方格数字有用。
+      它只做直线搬家：原点不动、直线还是直线、网格保持均匀。
+    </p>
+
+    <p>
+      这三条限制让矩阵能由几列决定：每一列就是“原来的一根坐标轴搬到了哪里”。
+    </p>
+
+    <div class="math">
+      A = [[1, 2], [3, 4]]<br>
+      第 1 列 [1, 3] = 原 x 轴的新位置<br>
+      第 2 列 [2, 4] = 原 y 轴的新位置<br><br>
+      A·[1, 1] = 1×[1, 3] + 1×[2, 4] = <span class="hl">[3, 7]</span>
+    </div>
+
+    <p>
+      输入的分量就是“配比”：1 份新 x 轴 + 1 份新 y 轴。
+      4 维时同理，只是要配 4 根轴。
+    </p>
+
+    <h3>回到案例：X[7,4] × W_Q[4,4] → Q[7,4]</h3>
+
+    <p>
+      案例里 X 有 7 行，每行是一个 token 的 4 维向量。W_Q 有 4 行 4 列，负责把输入换成 Query。
+      形状账先对上：
+    </p>
+
+    <div class="math">
+      X[7, 4] × W_Q[4, 4] → Q[7, 4]<br>
+      <span class="op">// 中间的 4 对上；7 行不变，每个词仍是 4 维</span>
+    </div>
+
+    <p>
+      不必把 28 个数全展开。只盯「它」这一行（第 5 行，从 0 数）：
+    </p>
+
+    <div class="math">
+      x它 = [0.7, 0.1, 0.8, 0.2]<br><br>
+      W_Q = [[0,&nbsp;&nbsp;&nbsp;0, 2,&nbsp;&nbsp;&nbsp;0],<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[0,&nbsp;&nbsp;&nbsp;0, 0,&nbsp;&nbsp;&nbsp;0],<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[2.5, 0, 3.25, 0],<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[0,&nbsp;&nbsp;&nbsp;0, 0,&nbsp;&nbsp;&nbsp;0]]<br><br>
+      Q它第 1 维 = 0.7×0 + 0.1×0 + 0.8×2.5 + 0.2×0 = <span class="hl">2.0</span><br>
+      Q它第 2 维 = <span class="hl">0</span><br>
+      Q它第 3 维 = 0.7×2 + 0.1×0 + 0.8×3.25 + 0.2×0 = <span class="hl">4.0</span><br>
+      Q它第 4 维 = <span class="hl">0</span><br><br>
+      → Q它 = [2, 0, 4, 0]
+    </div>
+
+    <p>
+      这个 W_Q 是教学简化：留了几个 0，只为把第 5 行算干净。
+      案例表里其余 6 行的 Q 也是教学值，不要求逐行手算。
+    </p>
+
+    <p>
+      看第 3 维：它取 2 份“小猫味”，再取 3.25 份“老鼠味”。
+      新的每一维，都是旧的四个数的一次加权和。
+    </p>
+
+    <div class="anim-block" data-scene="matrix-transform">
+      <div class="anim-bar">
+        <div class="anim-title">线性变换：网格被如何拉伸 / 旋转 / 剪切</div>
+        <div class="anim-ctrl">
+          <span class="param">
+            <select data-param="preset" aria-label="选择矩阵变换类型">
+              <option value="shear">错切（剪切）</option>
+              <option value="rotate">旋转 45°</option>
+              <option value="scale">拉伸 + 压扁</option>
+              <option value="project">投影（压成一条线）</option>
+              <option value="mirror">镜像（左右翻转）</option>
+            </select>
+          </span>
+          <button data-act="play">暂停</button>
+        </div>
+      </div>
+      <div class="canvas-wrap"><canvas></canvas></div>
+      <div class="anim-readout"></div>
+    </div>
+
+    <h3>顺带看一眼：行列式</h3>
+
+    <p>
+      二维矩阵的 det = ad − bc，读作“面积缩放倍数”。
+      det = 0 时，整个平面被压成一条线，信息收不回来。
+    </p>
+
+    <div class="math">
+      A = [[1, 2], [3, 4]]<br>
+      det = 1×4 − 2×3 = <span class="hl">−2</span><br>
+      <span class="op">// 面积变 2 倍，方向翻转</span>
+    </div>
+
+    <p>
+      语言模型里的 W 通常不追求可逆。这里知道 det 能读“压缩程度”就够了。
+    </p>
+
+    <h3>这层在输入法里做了什么</h3>
+
+    <p>
+      「小猫」「追」「老鼠」原来各是一张 4 维特征清单。乘完 W_Q，每个词换成一张“我该问什么”的清单，也就是 Q。
+      词还是 7 个，维度还是 4，变的是数的组合方式。
+    </p>
+
+    <p>
+      训练调的就是 W_Q 里的 16 个数。它们决定哪些旧特征被放大、哪些被抵消，从而决定 Q 长什么样。
+    </p>
+
+    <div class="warn">
+      <b>别把比喻当说明书</b>
+      “某一维代表动物性”只是帮助理解的画面。真实模型的特征是分布式、互相纠缠的，很难给每一维起一个准确名字。
+    </div>
+
+    <h3>回收：模具</h3>
+
+    <p>
+      W 像一套固定模具：7 块料都过同一道模，出来的形状由模具决定，不由料决定。
+      第 08 章会拿这套 Q 去和 K 打分，模具的差别就会落到分数上。
+    </p>
+
+    <div class="key">
+      <b>一句话记住</b>
+      读 X·W_Q 为“把每个词向量按 W_Q 这套规则重新组合，得到 Query”。
+      形状 [7,4] → [7,4]，词数不变。
+    </div>
+
+    <div class="note">
+      <b>这一章读完后，请自测</b>
+      <b>①</b> [7,4] × [4,4] 得到什么形状？（[7,4]）
+      <b>②</b> 为什么 7 个词不用 7 个不同的 W？（同一套规则复用，参数量与词数无关）
+      <b>③</b> Q它 的第 3 维 4.0 是怎么来的？（0.7×2 + 0.8×3.25）
+    </div>
+  </section>

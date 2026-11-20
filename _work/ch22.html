@@ -1,0 +1,150 @@
+<section class="chapter" data-num="22" data-short="LayerNorm">
+  <div class="ch-head"><span class="ch-num">22</span><h2>LayerNorm：让每个向量回到可控范围</h2></div>
+
+  <div class="case">
+    <b>案例走到哪了</b>
+    第 21 章的直通路把每层输入原样带下去，但多层输出不断相加，向量尺度仍可能漂移。
+    这一章拿「它」的向量 <code>[0.7, 0.1, 0.8, 0.2]</code> 算一遍：均值 0.45，标准差约 0.304。
+  </div>
+
+  <div class="plain">
+    <b>说人话</b>
+    在迷你输入法里，每个 token 的 4 维向量进入下一层前，先把自己的数值调到统一尺度。这样某个维度不会因为数值偏大而压过其他维度，后面的注意力也更容易比较。LayerNorm 是逐个 token 做的，不跨句子，也不依赖 batch 大小。
+  </div>
+
+  <div class="note">
+    <b>这一章要解决什么</b>
+    上一章解决了信号通路，这一章解决数值尺度。
+    你会看到公式、一次完整手算，以及 Transformer 为什么选 LayerNorm 而不是 BatchNorm。
+  </div>
+
+  <h3>公式里的五个符号</h3>
+
+  <p>
+    LayerNorm（层归一化）是在单个 token 的向量内部做标准化的操作。
+    例如 <code>[0.7, 0.1, 0.8, 0.2]</code> 会被变成 <code>[0.822, -1.151, 1.151, -0.822]</code>。
+  </p>
+
+  <div class="math">
+    LayerNorm(x) = γ · (x − μ) / √(σ² + ε) + β
+  </div>
+
+  <table class="tb">
+    <thead><tr><th>符号</th><th>是什么</th><th>作用</th></tr></thead>
+    <tbody>
+      <tr><td><code>μ</code></td><td>这个向量所有分量的<strong>平均值</strong></td><td>减掉它，把中心移到 0</td></tr>
+      <tr><td><code>σ</code></td><td>这个向量所有分量的<strong>标准差</strong></td><td>除掉它，把尺度压到 1</td></tr>
+      <tr><td><code>ε</code></td><td>一个很小的数，如 1e-5</td><td>防止除以 0</td></tr>
+      <tr><td><code>γ, β</code></td><td>两个<strong>可学习</strong>的参数</td><td>让模型决定要不要缩放、平移回来</td></tr>
+    </tbody>
+  </table>
+
+  <p>
+    关键在统计范围：μ 和 σ 只来自当前 token 自己的 d 个分量，
+    不跨 token，也不跨样本。
+  </p>
+
+  <p>
+    可以把它想成把不同单位的读数换到同一把尺子上：
+    刻度统一了，谁大谁小仍看得出来。
+  </p>
+
+    <div class="anim-block" data-scene="layernorm">
+      <div class="anim-bar">
+        <div class="anim-title">一个向量内部的标准化过程</div>
+        <div class="anim-ctrl"><button data-act="play">暂停</button></div>
+      </div>
+      <div class="canvas-wrap"><canvas></canvas></div>
+      <div class="anim-readout"></div>
+    </div>
+
+  <h3>用「它」手算一遍</h3>
+
+  <p><code>x = [0.7, 0.1, 0.8, 0.2]</code>，只算当前这个 token 的 4 个分量：</p>
+
+  <div class="math">
+    <span class="op">①</span> 均值：μ = (0.7 + 0.1 + 0.8 + 0.2) / 4 = 1.8 / 4 = <span class="hl">0.45</span><br><br>
+    <span class="op">②</span> 各分量减均值：<br>
+    &nbsp;&nbsp;0.7 − 0.45 = 0.25<br>
+    &nbsp;&nbsp;0.1 − 0.45 = −0.35<br>
+    &nbsp;&nbsp;0.8 − 0.45 = 0.35<br>
+    &nbsp;&nbsp;0.2 − 0.45 = −0.25<br><br>
+    <span class="op">③</span> 方差：<br>
+    &nbsp;&nbsp;(0.25² + 0.35² + 0.35² + 0.25²) / 4<br>
+    &nbsp;&nbsp;= (0.0625 + 0.1225 + 0.1225 + 0.0625) / 4<br>
+    &nbsp;&nbsp;= 0.37 / 4 = <span class="hl">0.0925</span><br>
+    &nbsp;&nbsp;σ = √0.0925 ≈ <span class="hl">0.304</span><br><br>
+    <span class="op">④</span> 归一化（忽略 ε）：<br>
+    &nbsp;&nbsp;0.25 / 0.304 ≈ <span class="hl">0.822</span><br>
+    &nbsp;&nbsp;−0.35 / 0.304 ≈ <span class="hl">−1.151</span><br>
+    &nbsp;&nbsp;0.35 / 0.304 ≈ <span class="hl">1.151</span><br>
+    &nbsp;&nbsp;−0.25 / 0.304 ≈ <span class="hl">−0.822</span>
+  </div>
+
+  <p>
+    γ = 1、β = 0 时，结果就是 <code>[0.822, -1.151, 1.151, -0.822]</code>。
+    新均值是 0，新方差是 1。
+  </p>
+
+  <p>
+    γ 和 β 让模型可以再把尺度和中心调回需要的范围。
+    归一化不是终点，而是给后续层一个稳定的起点。
+  </p>
+
+  <h3>为什么用 LayerNorm 不用 BatchNorm</h3>
+
+  <table class="tb">
+    <thead><tr><th></th><th>BatchNorm</th><th>LayerNorm</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>统计范围</td>
+        <td>跨样本、同一特征</td>
+        <td><strong>同一 token、跨特征</strong></td>
+      </tr>
+      <tr>
+        <td>依赖 batch 吗</td>
+        <td>依赖，batch 小时统计量容易偏</td>
+        <td><strong>不依赖</strong>，单个样本内部就算完</td>
+      </tr>
+      <tr>
+        <td>变长序列</td>
+        <td>要处理每个位置的有效样本数</td>
+        <td>天然支持</td>
+      </tr>
+      <tr>
+        <td>推理时</td>
+        <td>要保存训练时的滑动统计量</td>
+        <td>直接用当前 token 算，无需额外状态</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    一句话：LayerNorm 的统计量只依赖当前 token，训练和推理走同一套计算，
+    变长序列也不用特殊处理。
+  </p>
+
+  <h3>Pre-LN 与 Post-LN</h3>
+
+  <p>
+    原始 Transformer 把归一化放在残差相加之后，叫 Post-LN：
+    <code>x = LayerNorm(x + Sublayer(x))</code>。
+  </p>
+
+  <p>
+    很多现代实现把它放在子层之前，叫 Pre-LN：
+    <code>x = x + Sublayer(LayerNorm(x))</code>。
+  </p>
+
+  <p>
+    Pre-LN 的直通路更干净，深层训练通常更稳；Post-LN 也仍在使用。
+    选哪种要看具体模型，没有唯一答案。
+  </p>
+
+  <div class="warn">
+    <b>常见误解</b>
+    LayerNorm 不是把数值压小。
+    归一化那一步不改变分量之间的大小顺序：原来是第 3 个分量最大，减均值、除标准差后仍是它最大。
+    后面的 γ、β 再决定要不要缩放和平移。
+  </div>
+</section>

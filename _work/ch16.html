@@ -1,0 +1,104 @@
+  <section class="chapter" data-num="16" data-short="注意力分数矩阵">
+    <div class="ch-head"><span class="ch-num">16</span><h2>注意力分数：一张 7×7 的“谁看谁”表</h2></div>
+
+    <div class="case">
+      <b>案例走到哪了</b>
+      Q、K 都是 <code>[7,4]</code>。这一章算 <code>Q·Kᵀ</code>，得到 <code>[7,7]</code>；
+      再除以 √4=2，最后对每一行做 softmax。重点看第 5 行「它」。
+    </div>
+
+    <div class="plain">
+      <b>说人话</b>
+      让 7 个词两两对视，每个词给其他 6 个词（加上自己）打一个“跟我多相关”的分。
+      打完分后，每个词再把自己的 100% 注意力按分数分出去。
+      这张表就是模型眼里的“谁该看谁”。
+    </div>
+
+    <div class="note">
+      <b>这一章要解决什么</b>
+      把点积、转置、softmax 串成注意力最核心的三步，并看懂 <code>[7,7]</code> 矩阵的行和列。
+    </div>
+
+    <h3>三步串起来</h3>
+
+    <div class="math">
+      <span class="op">①</span> Scores = Q · Kᵀ　　<span class="op">// [7,4]×[4,7] → [7,7]</span><br>
+      <span class="op">②</span> Scores = Scores / √d<sub>k</sub>　<span class="op">// d=4，除以 2</span><br>
+      <span class="op">③</span> 对每一行做 softmax　<span class="op">// 每行变成和为 1 的权重</span>
+    </div>
+
+    <p>
+      第 i 行 = 第 i 个词在打量所有词；第 j 列 = 被打量的是第 j 个词。
+      行是 Query（主动看），列是 Key（被看）。
+    </p>
+
+    <h3>案例的 7×7 分数矩阵</h3>
+
+    <div class="math">
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;小猫　追　老鼠　，　因为　它　饿了<br>
+      小猫　[ 0.50, 0.00, 0.60, 0.00, 0.00, 0.12, 0.00 ]<br>
+      追　　[ 0.00, 0.50, 0.00, 0.00, 0.00, 0.00, 0.10 ]<br>
+      老鼠　[ 0.50, 0.00, 1.00, 0.00, 0.00, 0.20, 0.00 ]<br>
+      ，　　[ 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00 ]<br>
+      因为　[ 0.00, 0.00, 0.00, 0.00, 0.50, 0.00, 0.50 ]<br>
+      <span class="hl">它　　[ 1.00, 0.00, 3.00, 0.00, 0.00, 0.60, 0.00 ]</span><br>
+      饿了　[ 0.00, 0.10, 0.00, 0.00, 0.50, 0.00, 0.52 ]
+    </div>
+
+    <p>
+      看「它」这一行：老鼠 3.00 最高，小猫 1.00 第二，自己只有 0.60。
+      这说明「它」最想从「老鼠」那里取信息。
+    </p>
+
+    <h3>对「它」这一行做 softmax</h3>
+
+    <div class="math">
+      分数：[1.00, 0.00, 3.00, 0.00, 0.00, 0.60, 0.00]<br><br>
+      指数：[2.718, 1.000, 20.086, 1.000, 1.000, 1.822, 1.000]<br>
+      总和：28.626<br><br>
+      权重：[0.095, 0.035, <span class="hl">0.702</span>, 0.035, 0.035, 0.064, 0.035]<br>
+      读法：老鼠 70.2%，小猫 9.5%，自己 6.4%，其余分给标点和虚词
+    </div>
+
+    <div class="anim-block" data-scene="scores">
+      <div class="anim-bar">
+        <div class="anim-title">关系矩阵：逐行计算"我在看谁"</div>
+        <div class="anim-ctrl">
+          <button data-toggle="prob" class="tg on">概率视图</button>
+          <button data-toggle="mask" class="tg">因果掩码</button>
+          <button data-act="play">暂停</button>
+        </div>
+      </div>
+      <div class="canvas-wrap"><canvas></canvas></div>
+      <div class="anim-readout"></div>
+    </div>
+
+    <p>
+      动手做：关掉“概率视图”看原始分数；打开它，每行和变成 100%；
+      再打开“因果掩码”，看右上角怎么被涂掉。
+    </p>
+
+    <h3>为什么按行，不按列</h3>
+
+    <p>
+      每一行代表一个词分配自己的注意力。一个词只有 100% 的注意力可以分，
+      所以这一行必须加起来等于 1。
+    </p>
+
+    <div class="math">
+      行归一化：第 i 个词把 100% 分给所有候选词 ✓<br>
+      列归一化：所有词对第 j 个词的关注加起来 = 1　✗ 没有语义
+    </div>
+
+    <div class="key">
+      <b>一句话记住</b>
+      <code>Q·Kᵀ</code> 算分数，<code>/√d</code> 压尺度，softmax 按行分 100%。
+      三者合起来，就是“每个词决定看谁、看多少”。
+    </div>
+
+    <div class="warn">
+      <b>常见误解：注意力矩阵是对称的</b>
+      不是。「它」看「老鼠」权重 70.2%，不代表「老鼠」看「它」也高。
+      两个方向分别计算，用的是不同的 Q 和 K。
+    </div>
+  </section>

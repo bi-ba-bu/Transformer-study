@@ -1,0 +1,102 @@
+  <section class="chapter" data-num="19" data-short="多头注意力">
+    <div class="ch-head"><span class="ch-num">19</span><h2>多头注意力：同时看几种关系</h2></div>
+
+    <div class="case">
+      <b>案例走到哪了</b>
+      一组 Q/K/V 只能给「它」一张注意力表。这一章用 4 个头并行看 4 种关系：
+      指代（它→老鼠）、动宾（追→老鼠）、相邻（前一个词）、标点。
+      教学模型 d=4，所以每个头分到 1 维；真实模型 768/12=64 维。
+    </div>
+
+    <div class="plain">
+      <b>说人话</b>
+      一个头就像一个人，只能盯一种关系；多个人同时看，就能同时抓住“它指谁”、
+      “谁追谁”、“谁挨着谁”。最后把几个人的笔记拼在一起，交给一个汇总层。
+    </div>
+
+    <div class="note">
+      <b>这一章要解决什么</b>
+      搞懂多头是什么、为什么总维度不变，以及它为什么不会把计算量翻 h 倍。
+    </div>
+
+    <h3>一组 Q/K/V 只能学一种模式</h3>
+
+    <p>
+      如果只有一组 Q/K/V，softmax 之后每行只有一个分布，模型只能突出一种关注方式。
+      但一句话里的关系不止一种：
+    </p>
+
+    <ul>
+      <li>指代： 「它」→「老鼠」</li>
+      <li>动宾： 「追」→「老鼠」</li>
+      <li>相邻： 当前词 → 前一个词</li>
+      <li>结构： 标点、虚词、句边界</li>
+    </ul>
+
+    <p>
+      做法是<strong>并行做几组</strong>：把维度切成 h 份，每一份独立算一次注意力，
+      最后把结果拼回去。
+    </p>
+
+    <div class="math">
+      MultiHead(Q,K,V) = Concat(head₁, …, head_h) · W_O<br>
+      headᵢ = Attention(Q·W<sub>Q</sub><sup>i</sup>, K·W<sub>K</sub><sup>i</sup>, V·W<sub>V</sub><sup>i</sup>)
+    </div>
+
+    <div class="anim-block" data-scene="multihead">
+      <div class="anim-bar">
+        <div class="anim-title">四个头各盯一种语言关系</div>
+        <div class="anim-ctrl"><button data-act="play">暂停</button></div>
+      </div>
+      <div class="canvas-wrap"><canvas></canvas></div>
+      <div class="anim-readout"></div>
+    </div>
+
+    <h3>维度账本：为什么总维度不变</h3>
+
+    <p>设 <code>d_model = 768</code>，头数 h = 12：</p>
+
+    <div class="math">
+      每个头分到 768 / 12 = <span class="hl">64</span> 维<br><br>
+      12 个头各输出 [n, 64]<br>
+      Concat → [n, 12×64] = <span class="hl">[n, 768]</span><br>
+      再乘 W_O[768,768] → [n, 768]
+    </div>
+
+    <p>
+      所以多头不是把维度变成 12 倍，而是把 768 维<strong>切成 12 份平行处理</strong>。
+      输入输出总维度完全一样。
+    </p>
+
+    <h3>手算一遍</h3>
+
+    <p>教学模型 d=4，h=4：</p>
+
+    <div class="math">
+      每个头 4/4 = 1 维<br><br>
+      头 1（指代）→ [n, 1]<br>
+      头 2（动宾）→ [n, 1]<br>
+      头 3（相邻）→ [n, 1]<br>
+      头 4（标点）→ [n, 1]<br><br>
+      Concat → [n, 1+1+1+1] = [n, 4] ✓
+    </div>
+
+    <div class="key">
+      <b>核心价值</b>
+      每个头有自己的一套 W_Q/W_K/W_V，所以能学到不同的关注模式。
+      最后 W_O 把多个视角融合成一个表示。多头是“分工”，不是“加班”。
+    </div>
+
+    <div class="warn">
+      <b>常见误解：多头 = 计算量翻 h 倍</b>
+      投影和注意力的总计算量基本相当，因为每个头只处理 d/h 维，
+      算 h 次，每次的数据量是 1/h。多出来的是拼接、W_O 和并行调度的小开销，
+      不是“把整张大表算 h 遍”。
+    </div>
+
+    <div class="note">
+      <b>实践中观察到的现象</b>
+      不同的头确实会自发分工：有的盯前一个词，有的找关键实体，有的关注标点。
+      这不是人手工规定的，也不保证每个头都有可解释的职责。
+    </div>
+  </section>

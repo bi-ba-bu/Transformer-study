@@ -1,0 +1,173 @@
+  <section class="chapter" data-num="01" data-short="导数 = 斜率">
+    <div class="ch-head"><span class="ch-num">01</span><h2>导数：变化率到底在算什么</h2></div>
+
+    <div class="case">
+      <b>案例走到哪了</b>
+      迷你输入法现在给「老鼠」的概率只有 0.08，loss 停在 2.526；控制打分强弱的旋钮 w 是 0.50。
+      这一章先不拧它，只量一件事：w 动一点点，loss 会跟着动多快。
+    </div>
+
+    <div class="plain">
+      <b>说人话</b>
+      输入法要在「小猫 追」后面接出「老鼠」，可现在只给「老鼠」8% 的把握，错得比较明显。
+      想把它调好，得先知道内部旋钮往哪边拧、拧一点会带来多大变化。
+      这一章讲的就是“变化有多快”的测量方法，还不涉及真正去拧。
+      等这一步弄明白了，后面看梯度怎么把参数一步步调到合适位置，就不会觉得公式是突然冒出来的。
+    </div>
+
+    <div class="note">
+      <b>这一章要解决什么</b>
+      弄清“导数”这个词：它是某个点上“输入挪一点，输出变多少”的比例。
+      学完你能看懂 loss 曲线在某一点的斜率，并说出斜率的正负代表什么。
+    </div>
+
+    <h3>导数就是变化率</h3>
+
+    <p>
+      把模型想象成一台有很多旋钮的机器。导数回答的是其中一个旋钮的灵敏度：
+      旋钮转一点点，读数会变多少。
+    </p>
+
+    <p>
+      在迷你输入法里，这个旋钮是 w，读数是 loss。w = 0.50 时，
+      loss 对 w 的导数约为 <span class="hl">−1.84</span>。
+      读法是：w 增加一个很小的量，loss 会以大约 1.84 倍的速度下降。
+    </p>
+
+    <p>
+      负号只表示方向相反：w 往大调，loss 往下走。
+      它不表示 loss 已经是负数，也不表示这个斜率会一直不变。
+    </p>
+
+    <h3>前置概念：斜率，以及割线怎么变成切线</h3>
+
+    <p>
+      斜率是很朴素的东西：竖直方向的变化除以水平方向的变化，也就是 Δy / Δx。
+      一条线从 (1, 2) 走到 (3, 8)，Δx = 2，Δy = 6，斜率就是 3。
+    </p>
+
+    <div class="math">
+      斜率 = Δy / Δx
+    </div>
+
+    <p>
+      曲线没有固定斜率，每个点都可能不一样。办法是先取曲线上两个点，
+      连成一条<em>割线</em>，算这条割线的斜率。
+    </p>
+
+    <p>
+      然后让这两个点靠近。割线会越来越像一条只擦过曲线一点的线，
+      这条线叫<em>切线</em>。切线的斜率，就是那一点的导数。
+    </p>
+
+    <div class="math">
+      f′(x) = lim<sub>Δx→0</sub> <span class="op">[</span> f(x+Δx) − f(x) <span class="op">]</span> / Δx
+    </div>
+
+    <p>
+      这行公式只是在说：让 Δx 越来越小，看 Δy / Δx 稳定在哪个数。
+      “lim”不是另一套运算，它就是“靠近之后看结果”。
+    </p>
+
+    <p>
+      下面的动画里，青色是曲线，黄色虚线是割线，绿色是切线。
+      拖动切点，或者暂停在 Δx 很小的那一帧，可以看到黄色慢慢贴上绿色。
+    </p>
+
+    <div class="anim-block" data-scene="derivative">
+      <div class="anim-bar">
+        <div class="anim-title">割线如何逼近切线</div>
+        <div class="anim-ctrl">
+          <span class="param"><span class="param-label">切点 x</span>
+            <input type="range" data-param="a" min="-2.4" max="2.4" step="0.05" value="-1.4">
+            <span class="param-value"></span>
+          </span>
+          <button data-act="play">暂停</button>
+          <button data-act="reset">重来</button>
+        </div>
+      </div>
+      <div class="canvas-wrap"><canvas></canvas></div>
+      <div class="anim-readout"></div>
+    </div>
+
+    <h3>手算一遍：割线怎么逼近切线</h3>
+
+    <p>
+      动画里的曲线是 <code>f(x) = 0.25x³ − x</code>，导数是 <code>f′(x) = 0.75x² − 1</code>。
+      取 x = 2 这个点，先用两个不同的 Δx 算割线。
+    </p>
+
+    <div class="math">
+      取 Δx = 1：<br>
+      &nbsp;&nbsp;f(2) = 0.25×8 − 2 = 0<br>
+      &nbsp;&nbsp;f(3) = 0.25×27 − 3 = 3.75<br>
+      &nbsp;&nbsp;割线斜率 = (3.75 − 0) / 1 = <span class="hl">3.75</span><br><br>
+      取 Δx = 0.1：<br>
+      &nbsp;&nbsp;f(2.1) = 0.25×9.261 − 2.1 = 0.21525<br>
+      &nbsp;&nbsp;割线斜率 = (0.21525 − 0) / 0.1 = <span class="hl">2.1525</span><br><br>
+      切线斜率（公式）= 0.75×4 − 1 = <span class="hl">2</span>
+    </div>
+
+    <p>
+      Δx 从 1 缩到 0.1，割线斜率从 3.75 缩到 2.15，正在靠近 2。
+      缩得越小，越接近切线的 2。
+    </p>
+
+    <h3>回到输入法：−1.84 怎么读</h3>
+
+    <p>
+      把 loss 看成 w 的函数，在 w = 0.50 处画一条切线，斜率约 −1.84。
+      意思是：在这个刻度附近，w 每增加 0.01，loss 大约下降 0.0184。
+    </p>
+
+    <p>
+      “附近”两个字很重要。w 挪得远一些，曲线弯了，斜率也会变。
+      −1.84 描述的是 0.50 这一小段，不是整条 loss 曲线的固定属性。
+    </p>
+
+    <p>
+      回到旋钮：−1.84 是这只旋钮在当前刻度上的灵敏度。
+      灵敏度为负，说明往右拧会让读数下降；数值 1.84 说明下降得不算慢。
+    </p>
+
+    <h3>够用就行的求导规则</h3>
+
+    <p>下面这些不用推导，看到能认出来、知道在说什么就够了：</p>
+
+    <table class="tb">
+      <thead><tr><th>函数</th><th>导数</th><th>白话</th></tr></thead>
+      <tbody>
+        <tr><td><code>f(x) = c</code>（常数）</td><td><code>0</code></td><td>不变的数，变化率是零</td></tr>
+        <tr><td><code>f(x) = x</code></td><td><code>1</code></td><td>x 涨 1，输出涨 1</td></tr>
+        <tr><td><code>f(x) = x²</code></td><td><code>2x</code></td><td>x 越大，涨得越快</td></tr>
+        <tr><td><code>f(x) = x³</code></td><td><code>3x²</code></td><td>指数搬到前面，指数本身减 1</td></tr>
+        <tr><td><code>f(x) = eˣ</code></td><td><code>eˣ</code></td><td>自己就是自己的变化率</td></tr>
+        <tr><td><code>f(x) = ln x</code></td><td><code>1/x</code></td><td>x 越大，变化越慢</td></tr>
+      </tbody>
+    </table>
+
+    <p>
+      最常先用到的规律是 <code>xⁿ → nxⁿ⁻¹</code>。
+      上面 <code>0.25x³ − x</code> 的导数就是这样来的：
+      <code>0.25×3x² − 1 = 0.75x² − 1</code>。
+    </p>
+
+    <div class="note">
+      <b>为什么 eˣ 这么特殊</b>
+      它的导数等于自己。第 09、10 章的 softmax（把一排打分变成概率的函数）会反复出现 <code>eˣ</code>，
+      求导时形式不变，反向传播少一层麻烦。
+    </div>
+
+    <div class="warn">
+      <b>常见误解</b>
+      导数不是一个固定的数，而是随位置变化的函数。
+      <code>f(x)=x²</code> 在 x=1 处导数是 2，在 x=5 处导数是 10。
+      问“导数是多少”时，要带上“在哪一点”。
+    </div>
+
+    <div class="key">
+      <b>小结</b>
+      导数 = 曲线在某一点的切线斜率 = 输入变化一点点时输出的变化率。
+      在迷你输入法里，w=0.50 处的斜率约 −1.84：往大调 w，loss 会下降。
+    </div>
+  </section>

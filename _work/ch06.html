@@ -1,0 +1,197 @@
+  <section class="chapter" data-num="06" data-short="点积 = 相似度">
+    <div class="ch-head"><span class="ch-num">06</span><h2>点积：给两张清单打分</h2></div>
+
+    <div class="case">
+      <b>案例走到哪了</b>
+      「它」要判断该看谁。这一章先算它和「老鼠」的匹配分：
+      Q它 <code>[2,0,4,0]</code> · K老鼠 <code>[1,0,1,0]</code> = <strong>6</strong>；
+      和「小猫」只有 <strong>2</strong>。所以「老鼠」更相关。
+    </div>
+
+    <div class="plain">
+      <b>说人话</b>
+      「它」举着一张需求清单，每个词也举着一张自我说明。
+      两张清单逐项对齐、相乘、再加总，分越高说明越对得上。
+      点积就是这张“给清单打分”的动作，没有别的魔法。
+    </div>
+
+    <div class="note">
+      <b>这一章要解决什么</b>
+      搞懂点积怎么算，以及它为什么能衡量“两个向量有多相关”。
+      这是整个注意力机制的地基。
+    </div>
+
+    <h3>先算一遍，再看道理</h3>
+
+    <p>
+      两个向量，<strong>对应位置相乘，然后全部加起来</strong>：
+    </p>
+
+    <div class="math">
+      a · b = a₁b₁ + a₂b₂ + … + aₙbₙ
+    </div>
+
+    <p>拿案例里的两个向量算：</p>
+
+    <div class="math">
+      Q它 = [2, 0, 4, 0]　　K老鼠 = [1, 0, 1, 0]<br>
+      Q·K = 2×1 + 0×0 + 4×1 + 0×0 = <span class="hl">6</span>
+    </div>
+
+    <p>
+      结果是<strong>一个数</strong>，不是向量。这一点很重要：
+      点积把两个向量压成一个“匹配分”。
+    </p>
+
+    <h3>为什么它代表“相似”</h3>
+
+    <p>
+      点积有一个等价的几何写法：
+    </p>
+
+    <div class="math">
+      a · b = <span class="hl">|a| |b| cos θ</span>
+      <br><span class="op">// θ 是两个向量的夹角</span>
+    </div>
+
+    <p>
+      也就是说：<strong>点积 = 两个长度相乘，再乘上夹角的余弦</strong>。
+      <code>cos θ</code> 的规律是：
+    </p>
+
+    <table class="tb">
+      <thead><tr><th>夹角 θ</th><th>cos θ</th><th>点积</th><th>含义</th></tr></thead>
+      <tbody>
+        <tr><td>0°</td><td>1</td><td>最大正值</td><td>方向完全一致</td></tr>
+        <tr><td>60°</td><td>0.5</td><td>正值</td><td>大致同向</td></tr>
+        <tr><td>90°</td><td>0</td><td>0</td><td>垂直，方向无关</td></tr>
+        <tr><td>120°</td><td>−0.5</td><td>负值</td><td>大致反向</td></tr>
+        <tr><td>180°</td><td>−1</td><td>最大负值</td><td>方向完全相反</td></tr>
+      </tbody>
+    </table>
+
+    <p>
+      所以点积的符号能区分三种情况：<strong>同向（正）、垂直（0）、反向（负）</strong>。
+      注意力需要的正是这个带符号的“合不合拍”。
+    </p>
+
+    <h3>案例手算：它到底更像谁</h3>
+
+    <div class="math">
+      Q它 = [2, 0, 4, 0]<br><br>
+      <span class="op">// 和老鼠</span><br>
+      K老鼠 = [1, 0, 1, 0]　→　点积 = 2 + 4 = <span class="hl">6</span><br>
+      |Q| = √(2²+4²) = √20 ≈ 4.472<br>
+      |K| = √(1²+1²) = √2 ≈ 1.414<br>
+      cos θ = 6 / (4.472×1.414) = 6 / 6.325 ≈ <span class="hl">0.949</span><br><br>
+      <span class="op">// 和小猫</span><br>
+      K小猫 = [1, 0, 0, 0]　→　点积 = <span class="hl">2</span><br>
+      cos θ = 2 / (4.472×1) ≈ <span class="hl">0.447</span>
+    </div>
+
+    <p>
+      「它」和「老鼠」的余弦相似度约 0.95，和「小猫」只有 0.45。
+      所以第 16 章 softmax 之后，「老鼠」拿到 70.2% 的权重，不是随便编的。
+    </p>
+
+    <h3>为什么用乘法，不用减法</h3>
+
+    <p>
+      「比较两个向量」直觉上该用减法：相减取绝对值，越小越像。
+      但减法只能回答<strong>“差多远”</strong>，回答不了<strong>“方向合不合”</strong>。
+    </p>
+
+    <div class="math">
+      a = [1, 1]　　b = [1, −1]<br><br>
+      <span class="op">// 点积：每一维的贡献带符号，可以正负抵消</span><br>
+      1×1 + 1×(−1) = 1 − 1 = <span class="hl">0</span>　→ 整体无关<br><br>
+      <span class="op">// 距离：每一维的贡献永远为正，无法抵消</span><br>
+      (1−1)² + (1−(−1))² = 0 + 4 = <span class="hl">4</span>
+    </div>
+
+    <p>
+      减法把符号抹掉了，所以它看不出“第一维其实完全吻合”。
+      注意力需要区分<strong>同向、垂直、反向</strong>三档，点积正好给得出这三档。
+    </p>
+
+    <h3>投影：点积的物理图像</h3>
+
+    <p>
+      「K 在 Q 方向上的投影」可以想成<strong>正午太阳照下来，杆子在地上的影子</strong>。
+      Q 是地面上的方向，K 是一根斜着的杆子；影子越长，K 朝着 Q 方向的分量越多。
+    </p>
+
+    <div class="math">
+      夹角越小　→　影子越长　→　点积越大<br>
+      垂直　　　→　影子缩成一个点　→　点积 = 0<br>
+      反向　　　→　影子落在反方向　→　点积为负
+    </div>
+
+    <p>
+      下面这个动画把这件事画出来了。青色是 Q，粉色是 K，紫色那段是 K 在 Q 方向上的投影。
+    </p>
+
+    <div class="anim-block" data-scene="dot-product">
+      <div class="anim-bar">
+        <div class="anim-title">点积 = 投影长度 × Q 的长度</div>
+        <div class="anim-ctrl">
+          <span class="param"><span class="param-label">旋转 K</span>
+            <input type="range" data-param="ang" min="0" max="1" step="0.005" value="0.357" data-digits="2">
+            <span class="param-value"></span>
+          </span>
+          <span class="param"><span class="param-label">K 的长度</span>
+            <input type="range" data-param="lenK" min="0.4" max="1.8" step="0.02" value="1" data-digits="2">
+            <span class="param-value"></span>
+          </span>
+          <button data-act="autorotate">自动旋转</button>
+        </div>
+      </div>
+      <div class="canvas-wrap"><canvas></canvas></div>
+      <div class="anim-readout"></div>
+    </div>
+
+    <p>
+      把“K 的长度”从 1 拖到 1.8。点积变大了，但 <code>cos θ</code> 一点没变。
+      这说明点积同时混入了<strong>方向</strong>和<strong>长度</strong>两个因素。
+    </p>
+
+    <div class="warn">
+      <b>常见误解：点积大就一定相似</b>
+      不一定。长度一大，点积也会大，哪怕方向完全没变。
+      要纯比较方向，应该看 <code>cos θ = (a·b)/(|a||b|)</code>。
+      注意力里之所以可以直接用点积，是因为 Q/K 都是线性层输出，尺度由模型控制；
+      而第 18 章的 <code>/√d</code> 处理的是<strong>维度带来的方差膨胀</strong>，不是“把长度归一化”。
+    </div>
+
+    <h3>768 维看不见，为什么还能信</h3>
+
+    <p>
+      这里要分清两件事，很多教程会把它们混成一句：
+    </p>
+
+    <div class="math">
+      <span class="op">// 方向</span><br>
+      两个随机向量在高维里几乎垂直　→　cos θ ≈ 0<br><br>
+      <span class="op">// 大小</span><br>
+      如果每个分量是均值 0、方差 1 的随机数<br>
+      点积的标准差 = √d　→　d=768 时约 <span class="hl">27.7</span>，不是 0
+    </div>
+
+    <p>
+      “几乎垂直”说的是<strong>方向</strong>，不是点积等于 0。
+      所以第 16 章的原始分数会有正有负、绝对值不小；除以 √d 之后，标准差才回到 1 左右。
+    </p>
+
+    <div class="key">
+      <b>一句话记住</b>
+      点积 = 对应位置相乘再加总 = 方向一致性（带符号）× 两个长度。
+      它回答的是“你朝我这边走了多少”，不是“你每个数和我像不像”。
+    </div>
+
+    <div class="note">
+      <b>这一章读完后，请自测</b>
+      <b>①</b> 两个向量长度都翻倍，点积变成几倍？（4 倍）
+      <b>②</b> 点积是 −50 说明什么？（方向相反，模型倾向于排斥）
+      <b>③</b> 案例里 Q它·K老鼠 = 6，除以 √d=2 后是多少？（3）
+    </div>
+  </section>

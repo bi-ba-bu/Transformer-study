@@ -1,0 +1,142 @@
+  <section class="chapter" data-num="00" data-short="怎么用这份教程">
+    <div class="ch-head"><span class="ch-num">00</span><h2>先读这一页：全书只做一个输入法</h2></div>
+
+    <div class="case">
+      <b>贯穿案例</b>
+      用户输入「小猫追」，一个迷你中文输入法要把「老鼠」排在候选第一位。
+      全书 29 章都在回答同一个问题：<strong>这句话是怎么一步步变成「老鼠 62%」的？</strong>
+    </div>
+
+    <div class="plain">
+      <b>说人话</b>
+      你不需要先学会所有数学。你只需要跟着一句话走：它先被切成词，变成一串数，
+      再经过几层加工，最后变成一张「下一个词是谁」的概率表。
+      每一章只拆开其中一小步，拆完再装回去。
+    </div>
+
+    <div class="note">
+      <b>这份教程的原则</b>
+      每个符号出现之前，先把它单独讲清楚；每个公式出现之前，先给一个具体数字。
+      不假设你记得微积分，也不假设你写过代码。
+    </div>
+
+    <h3>整份教程只回答一个问题</h3>
+
+    <div class="math">
+      输入「小猫 追」　→　模型算出一张概率表　→　「老鼠」0.62，排第一
+    </div>
+
+    <p>
+      Transformer 不是魔法，它是一条流水线。这条流水线有 11 站：
+    </p>
+
+    <table class="tb">
+      <thead><tr><th>#</th><th>这一步</th><th>在输入法里干什么</th><th>章</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>切词 + 编号</td><td>把「小猫追」切成词，换成 ID</td><td>11</td></tr>
+        <tr><td>2</td><td>查表得词向量</td><td>用 ID 取出一串数，代表这个词</td><td>11、12</td></tr>
+        <tr><td>3</td><td>加位置编码</td><td>告诉模型谁在前、谁在后</td><td>13</td></tr>
+        <tr><td>4</td><td>乘三个矩阵</td><td>把每个词拆成 Q / K / V 三个角色</td><td>07、15</td></tr>
+        <tr><td>5</td><td>Q·Kᵀ</td><td>每个词给每个词的相关性打分</td><td>06、08、16</td></tr>
+        <tr><td>6</td><td>除以 √d</td><td>把分数压回正常范围</td><td>18</td></tr>
+        <tr><td>7</td><td>softmax</td><td>把分数变成加起来等于 1 的百分比</td><td>09、16</td></tr>
+        <tr><td>8</td><td>乘 V 再求和</td><td>按百分比吸收别的词的内容</td><td>17</td></tr>
+        <tr><td>9</td><td>多头拼接</td><td>同时看几种不同的关系</td><td>19</td></tr>
+        <tr><td>10</td><td>残差 / LayerNorm / FFN</td><td>把结果加回去、稳住尺度、再加工一遍</td><td>14、21、22、23</td></tr>
+        <tr><td>11</td><td>输出层 + 交叉熵</td><td>猜下一个词，和正确答案比差多少</td><td>04、24</td></tr>
+      </tbody>
+    </table>
+
+    <p>
+      第 4 到第 9 站会整段重复很多次。GPT-3 重复 96 次，Llama 3 8B 重复 32 次。
+      每重复一次，模型就把这句话重新加工一遍。
+    </p>
+
+    <h3>同一个案例，走完 29 章</h3>
+
+    <p>
+      后面所有章节都用同一句训练语料：
+    </p>
+
+    <div class="math">
+      小猫　追　老鼠　，　因为　它　饿了
+    </div>
+
+    <p>
+      它一共 7 个 token。产品任务只取前两个 token「小猫 追」作为输入；
+      讲注意力时，用完整的 7 个 token 看「它」到底指谁。
+    </p>
+
+    <table class="tb">
+      <thead><tr><th>token</th><th>小猫</th><th>追</th><th>老鼠</th><th>，</th><th>因为</th><th>它</th><th>饿了</th></tr></thead>
+      <tbody>
+        <tr><td>位置</td><td>0</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td></tr>
+        <tr><td>ID（玩具值）</td><td>12</td><td>88</td><td>42</td><td>3</td><td>77</td><td>9</td><td>105</td></tr>
+      </tbody>
+    </table>
+
+    <p>
+      这条线会一路接下去：训练前模型给「老鼠」8% 的概率，loss 是 2.53；
+      训练后升到 62%，loss 降到 0.48；讲注意力时，「它」把 70.2% 的权重给了「老鼠」。
+      每个数字都能在后面的章节里找到出处。
+    </p>
+
+    <div class="key">
+      <b>为什么只用一句例子</b>
+      每章换一个新例子，等于每章重新建一次直觉。
+      同一句话走到底，你只需要记一次人物关系，剩下的精力都用来理解机制。
+    </div>
+
+    <h3>每一章都长一个样</h3>
+
+    <table class="tb">
+      <thead><tr><th>板块</th><th>作用</th></tr></thead>
+      <tbody>
+        <tr><td><strong>案例走到哪了</strong></td><td>黄色卡片，告诉你这一章盯住哪个数字，接上上一章</td></tr>
+        <tr><td><strong>说人话</strong></td><td>绿色卡片，不用公式，只讲这一步在输入法里干什么</td></tr>
+        <tr><td><strong>这一章要解决什么</strong></td><td>一句话说清学完能得到什么</td></tr>
+        <tr><td><strong>手算一遍</strong></td><td>拿纸笔能跟着算的具体数字</td></tr>
+        <tr><td><strong>动画</strong></td><td>可暂停、可拖参数；灰条是实时数值</td></tr>
+        <tr><td><strong>常见误解</strong></td><td>橙色卡片，专门纠正最容易错的地方</td></tr>
+        <tr><td><strong>小结</strong></td><td>紫色卡片，一句话总结</td></tr>
+      </tbody>
+    </table>
+
+    <p>
+      看到动画，先猜结果，再拖滑块。猜错了，说明直觉还有偏差，这时候看数值变化才有意义。
+    </p>
+
+    <h3>三条阅读路线</h3>
+
+    <table class="tb">
+      <thead><tr><th>你的情况</th><th>建议路线</th><th>时间</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>完全零基础</td>
+          <td>从头按顺序读，一章都不要跳</td>
+          <td>约 3 小时</td>
+        </tr>
+        <tr>
+          <td>数学还行，想快速抓骨架</td>
+          <td><strong>03 → 04 → 06 → 08 → 09 → 15 → 16 → 17 → 23 → 24</strong></td>
+          <td>约 50 分钟</td>
+        </tr>
+        <tr>
+          <td>只想搞懂公式为什么这么写</td>
+          <td><strong>06 → 08 → 16 → 18 → 17</strong></td>
+          <td>约 30 分钟</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="tip">
+      <b>只想先看一遍人话</b>
+      左侧目录下面有一个「白话模式」按钮。打开后只显示每章的案例进度和白话卡，
+      公式、表格、动画都会暂时隐藏。先花 20 分钟把主线跑一遍，再关掉它回来精读。
+    </div>
+
+    <p>
+      准备好了就从第 01 章开始。如果某章觉得跳跃，那不是你的问题，
+      告诉我是哪一章，我可以把那处拆得更细。
+    </p>
+  </section>

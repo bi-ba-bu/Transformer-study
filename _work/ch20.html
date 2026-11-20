@@ -1,0 +1,103 @@
+  <section class="chapter" data-num="20" data-short="因果掩码">
+    <div class="ch-head"><span class="ch-num">20</span><h2>因果掩码：不许偷看答案</h2></div>
+
+    <div class="case">
+      <b>案例走到哪了</b>
+      训练语料有 7 个 token。第 5 个「它」只能看 0–5，不能看第 6 个「饿了」；
+      第 6 个「饿了」才能看完整句。这一章把右上角涂掉，保证训练时也不偷看未来。
+    </div>
+
+    <div class="plain">
+      <b>说人话</b>
+      训练时整句话都在手上，如果不遮，模型可以直接看下一个词，loss 立刻变 0，
+      但它什么都没学会。因果掩码就是给每个词发一张“只能看左边”的座位表。
+    </div>
+
+    <div class="note">
+      <b>这一章要解决什么</b>
+      搞懂 GPT 类模型为什么必须遮住“未来”，以及为什么遮罩用 −∞ 而不是 0。
+    </div>
+
+    <h3>问题：答案就在旁边</h3>
+
+    <p>
+      GPT 的训练目标是“预测下一个词”。训练时整句话都在手上：
+    </p>
+
+    <div class="math">
+      输入：小猫 追 老鼠 ， 因为 它 饿了<br>
+      目标：追　老鼠　，　因为　它　饿了　&lt;eos&gt;
+    </div>
+
+    <p>
+      如果不限制，模型会发现一个偷懒办法：预测「追」的时候，直接看输入里的「追」。
+      这样 loss 立刻变 0，但它没有学到任何可用的规律。
+    </p>
+
+    <h3>方案：把右上角涂掉</h3>
+
+    <p>
+      在 softmax 之前，把不该看的格子置为 −∞。这样 softmax 之后这些位置权重就是 0。
+      规则：<strong>第 i 个词只能看第 0 到第 i 个词（包含自己）。</strong>
+    </p>
+
+    <div class="anim-block" data-scene="causal-mask">
+      <div class="anim-bar">
+        <div class="anim-title">下三角掩码：每步只能看左边</div>
+        <div class="anim-ctrl"><button data-act="play">暂停</button></div>
+      </div>
+      <div class="canvas-wrap"><canvas></canvas></div>
+      <div class="anim-readout"></div>
+    </div>
+
+    <h3>手算一遍</h3>
+
+    <p>先用 4 个词，原始分数全是 1：</p>
+
+    <div class="math">
+      原始：<br>
+      [[1, 1, 1, 1],<br>
+      &nbsp;[1, 1, 1, 1],<br>
+      &nbsp;[1, 1, 1, 1],<br>
+      &nbsp;[1, 1, 1, 1]]<br><br>
+      加掩码（右上角置 −∞）：<br>
+      [[1,   −∞,  −∞,  −∞],<br>
+      &nbsp;[1,   1,   −∞,  −∞],<br>
+      &nbsp;[1,   1,   1,   −∞],<br>
+      &nbsp;[1,   1,   1,   1]]<br><br>
+      每行 softmax：<br>
+      第 0 行 → [<span class="hl">1.0, 0, 0, 0</span>]<br>
+      第 1 行 → [<span class="hl">0.5, 0.5, 0, 0</span>]<br>
+      第 2 行 → [<span class="hl">0.333, 0.333, 0.333, 0</span>]<br>
+      第 3 行 → [<span class="hl">0.25, 0.25, 0.25, 0.25</span>]
+    </div>
+
+    <p>
+      回到案例：第 5 行「它」的最后一格（饿了）是 −∞，softmax 后权重 0；
+      第 6 行「饿了」可以看到全部 7 个词。
+    </p>
+
+    <div class="key">
+      <b>为什么是 −∞ 而不是 0</b>
+      直接把分数设为 0 不行，因为 <code>e⁰ = 1</code>，仍然占一份权重。
+      要让它变成负无穷，<code>e^(−∞) = 0</code>，才是真正的“完全排除”。
+      代码里常用 <code>-1e9</code> 或 <code>float('-inf')</code>。
+    </div>
+
+    <h3>三种注意力变体</h3>
+
+    <table class="tb">
+      <thead><tr><th>类型</th><th>谁能看谁</th><th>典型用途</th></tr></thead>
+      <tbody>
+        <tr><td>双向（无掩码）</td><td>所有词互相都能看</td><td>BERT：理解、分类、检索</td></tr>
+        <tr><td>因果（下三角）</td><td>只能看自己和左边</td><td>GPT / Llama / Qwen：生成</td></tr>
+        <tr><td>交叉注意力</td><td>Q 来自 A，K/V 来自 B</td><td>翻译、多模态</td></tr>
+      </tbody>
+    </table>
+
+    <div class="warn">
+      <b>常见误解：因果掩码只是训练技巧</b>
+      它是任务定义的一部分。训练时遮、推理时也遮，模型看到的信息条件才一致。
+      如果训练不遮、推理遮，效果会明显崩坏。
+    </div>
+  </section>

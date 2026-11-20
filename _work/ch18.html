@@ -1,0 +1,127 @@
+  <section class="chapter" data-num="18" data-short="为什么除 √d">
+    <div class="ch-head"><span class="ch-num">18</span><h2>为什么除以 √d：把分数拉回同一把尺子</h2></div>
+
+    <div class="case">
+      <b>案例走到哪了</b>
+      「它」对「老鼠」的原始点积是 <strong>6</strong>。d=4，所以除以 √4=2，得到 <strong>3</strong>。
+      如果不除，6 会把 softmax 推得更尖；除完，分数回到可比较的尺度。
+    </div>
+
+    <div class="plain">
+      <b>说人话</b>
+      对比的项数越多，总分越容易“虚高”。除以 √d 就是把总分按项数的平方根折算一下，
+      让 4 维和 768 维的分数能放在同一把尺子上比较。
+      它主要不是防数字溢出，而是防 softmax 太早变成“只选一个”。
+    </div>
+
+    <div class="note">
+      <b>这一章要解决什么</b>
+      搞懂 <code>/√d</code> 到底在控制什么，以及为什么没有它，深层的注意力很难训练。
+    </div>
+
+    <h3>点积会随维度变大</h3>
+
+    <p>
+      假设 Q 和 K 的每个分量都是独立的、均值 0、方差 1 的随机数。
+      那么点积 <code>Σ qᵢkᵢ</code> 是 d 个独立项相加：
+    </p>
+
+    <div class="math">
+      E[qᵢkᵢ] = 0<br>
+      Var(qᵢkᵢ) = E[qᵢ²]·E[kᵢ²] = 1<br><br>
+      Var(点积) = d　→　标准差 = <span class="hl">√d</span>
+    </div>
+
+    <p>
+      所以维度越大，点积的典型绝对值越大：
+      d=4 时标准差 2，d=64 时 8，d=768 时约 27.7。
+      注意，这是“典型波动范围”，不是“每个点积都等于 √d”。
+    </p>
+
+    <h3>分数太大，softmax 会变尖</h3>
+
+    <p>
+      softmax 里有 <code>eˣ</code>，会把差距指数级放大。
+      如果 4 个分数是 <code>[16, 0, −16, 0]</code>：
+    </p>
+
+    <div class="math">
+      e¹⁶ = 8,886,110　　e⁰ = 1　　e⁻¹⁶ ≈ 0.0000001<br>
+      概率 ≈ [<span class="hl">99.99998%</span>, 0.00001%, ~0%, 0.00001%]
+    </div>
+
+    <p>
+      这就叫<strong>饱和</strong>：输出几乎变成 one-hot，所有注意力都压在最高分那个词上。
+      模型失去了“在几个候选之间分配”的能力。
+    </p>
+
+    <h3>为什么饱和会影响训练</h3>
+
+    <p>
+      softmax 在饱和区的雅可比（输入变一点，输出变多少）接近 0。
+      梯度要经过 softmax 传回 Q/K，乘上这个接近 0 的系数后，信号会变得很小。
+    </p>
+
+    <div class="math">
+      分数很大　→　softmax 接近 [1,0,0,…]<br>
+      →　对分数的局部梯度很小<br>
+      →　Q/K 收到的更新信号很弱
+    </div>
+
+    <p>
+      这不是说参数“绝对不更新”，而是说更新会变得又慢又不稳定。
+      除以 √d 把分数尺度拉回 1 附近，softmax 就不容易一上来就饱和。
+    </p>
+
+    <div class="anim-block" data-scene="scaling">
+      <div class="anim-bar">
+        <div class="anim-title">除以 √d 前后的分数分布（横轴是真实数值）</div>
+        <div class="anim-ctrl">
+          <span class="param"><span class="param-label">维度 d</span>
+            <input type="range" data-param="dim" min="4" max="256" step="4" value="64" data-digits="0">
+            <span class="param-value"></span>
+          </span>
+          <button data-act="play">暂停</button>
+        </div>
+      </div>
+      <div class="canvas-wrap"><canvas></canvas></div>
+      <div class="anim-readout"></div>
+    </div>
+
+    <p>
+      把 d 从 4 拖到 256。红线（不缩放）越来越矮、越来越宽；
+      绿线（除以 √d）始终保持在 ±1 附近的窄峰。这个对比就是缩放的作用。
+    </p>
+
+    <h3>手算一遍</h3>
+
+    <div class="math">
+      d = 4　　→　σ = √4 = 2　　→　除以 2　　→　缩放后 σ = 1<br>
+      d = 64　 →　σ = √64 = 8　 →　除以 8　　→　缩放后 σ = 1<br>
+      d = 256　→　σ = √256 = 16 →　除以 16　→　缩放后 σ = 1<br><br>
+      规律：<span class="hl">√d / √d = 1</span>
+    </div>
+
+    <p>
+      案例里 d=4，原始分数 6，除以 2 得 3。
+      3 仍然是一个不小的分数，但已经比 6 温和得多，softmax 不会立刻变成 one-hot。
+    </p>
+
+    <div class="key">
+      <b>一句话记住</b>
+      d 维点积的标准差 ∝ √d。不缩放，分数容易过大，softmax 饱和，梯度变弱；
+      除以 √d 把尺度拉回 1 左右，让不同维度下的注意力都比较得动。
+    </div>
+
+    <div class="warn">
+      <b>常见误解：除以 √d 是为了防溢出</b>
+      不是。指数溢出只是表面现象，真正的问题是 softmax 饱和后局部梯度太小。
+      即使数值不溢出，饱和的 softmax 也会让训练变慢、变不稳。
+    </div>
+
+    <div class="warn">
+      <b>另一个常见误解：除以 √d 等于归一化长度</b>
+      不是。它处理的是<strong>维度带来的方差膨胀</strong>，不是把每个 Q/K 向量变成单位长度。
+      长度归一化是另一件事，做不做由模型设计决定。
+    </div>
+  </section>

@@ -1,0 +1,175 @@
+  <section class="chapter" data-num="03" data-short="梯度下降">
+    <div class="ch-head"><span class="ch-num">03</span><h2>梯度下降：模型怎么“学”</h2></div>
+
+    <div class="case">
+      <b>案例走到哪了</b>
+      第 02 章算出 w 的梯度是 −1.84。这一章拿它走一步：
+      学习率 η = 0.1，<code>w ← 0.50 − 0.1×(−1.84) = 0.684</code>。
+    </div>
+
+    <div class="plain">
+      <b>说人话</b>
+      知道了旋钮往哪边灵、灵敏到什么程度，输入法开始真正去调。
+      每一轮都照着梯度的反方向拧一小步，再看新的 loss，继续下一轮。
+      学习率决定这一步迈多大：迈得合适就稳稳靠近，迈过头就会来回跳。
+      它不指望一次就找到最好的位置，只让每一轮的 loss 比上一轮低一点。
+    </div>
+
+    <div class="note">
+      <b>这一章要解决什么</b>
+      搞懂“训练”这个动作：为什么往梯度反方向走能降低 loss，
+      以及学习率调大以后会发生什么。学完你能手算一次参数更新。
+    </div>
+
+    <h3>从导数到梯度</h3>
+
+    <p>
+      第 01 章的导数是“一个输入、一个输出”。模型的 loss 却由很多参数共同决定，
+      真实模型有上亿个参数，玩具模型只有几个，规则一样。
+    </p>
+
+    <p>
+      这时导数升级成<strong>梯度</strong>：一个向量，每个分量是一个参数自己的偏导数
+      （只对这个参数求导，其余参数当常数）。
+      它告诉你，单独把某个参数往大挪一点，loss 会涨多快。
+    </p>
+
+    <p>
+      梯度指向当前点上坡最陡的方向。想下山，就往它的反方向走。
+      这句话是局部的：换一个位置，最陡的方向也可能换。
+    </p>
+
+    <div class="math">
+      θ ← θ − <span class="hl">η</span> · ∇L(θ)
+      <br><span class="op">// θ 是参数，η 是学习率，∇L 是 loss 对参数的梯度</span>
+    </div>
+
+    <p>这一行就三件事：算梯度、取负号、乘学习率决定步长。</p>
+
+    <h3>走一步，看看数</h3>
+
+    <p>
+      当前 w = 0.50，梯度 −1.84，学习率 0.1。
+      更新量是 <code>0.1×(−1.84)</code> 的反号，等于 +0.184。
+    </p>
+
+    <div class="math">
+      w ← 0.50 − 0.1×(−1.84) = 0.50 + 0.184 = <span class="hl">0.684</span><br><br>
+      P(老鼠)：0.08 → 约 <span class="hl">0.10</span><br>
+      loss：2.526 → 约 <span class="hl">2.303</span>
+    </div>
+
+    <p>
+      一步只挪了一点，所以概率和 loss 变化都不大。
+      这正是梯度下降的样子：不一次跳到底，而是反复走小步、反复重新算梯度。
+    </p>
+
+    <h3>把 loss 想成一片地形</h3>
+
+    <p>
+      下面的动画把 loss 画成等高线地图，颜色越深表示地势越高。
+      白球从左上角出发，每一步沿着当前位置的下坡方向滚一小段。
+    </p>
+
+    <div class="anim-block" data-scene="gradient-descent">
+      <div class="anim-bar">
+        <div class="anim-title">在损失地形上走下山</div>
+        <div class="anim-ctrl">
+          <span class="param"><span class="param-label">学习率 η</span>
+            <input type="range" data-param="lr" min="0.02" max="0.6" step="0.01" value="0.18" data-digits="3">
+            <span class="param-value"></span>
+          </span>
+          <button data-act="play">暂停</button>
+          <button data-act="reset">重来</button>
+        </div>
+      </div>
+      <div class="canvas-wrap"><canvas></canvas></div>
+      <div class="anim-readout"></div>
+    </div>
+
+    <div class="warn">
+      <b>动手做：把学习率调到 0.5 以上</b>
+      球会在两侧来回弹，最后飞出画面，这叫<strong>发散</strong>。
+      这个地形是 <code>f(x,y)=0.5x²+2y²+0.7xy</code>，
+      最陡方向的曲率（二阶导数）<a class="sym" href="#sym-lambda">λmax</a> 是 4.155，
+      对应的步长阈值是 <code>2/4.155 ≈ 0.48</code>。
+      超过 0.48，在这个地形上迭代会越走越远。
+    </div>
+
+    <p>
+      反过来，把学习率调到 0.02：球走得很稳，但要很久才接近谷底。
+      调参常碰到这一对矛盾：太大震荡，太小磨蹭。
+    </p>
+
+    <h3>阈值 2/L″ 是怎么来的</h3>
+
+    <p>
+      用最简单的一维二次函数 <code>L(w) = a w²</code> 看。它的导数是 2aw，
+      二阶导数 L″ = 2a。
+    </p>
+
+    <div class="math">
+      w ← w − η·2aw = (1 − 2aη)·w
+    </div>
+
+    <p>
+      每一步都把 w 乘上 <code>1 − 2aη</code>。要让 |w| 越来越小，
+      需要 <code>|1 − 2aη| &lt; 1</code>，解出来就是 <code>η &lt; 1/a = 2/L″</code>。
+    </p>
+
+    <p>
+      以 <code>L(w) = w²</code> 为例，L″ = 2，阈值是 <code>2/2 = 1</code>。
+      动画里的二次型 λmax = 4.155，对应阈值约 0.48，用的是同一个思路。
+    </p>
+
+    <p>
+      这个结论来自二次型，或者当前位置附近的二次近似。
+      真实 loss 不是一条固定的抛物线，阈值会随位置变化，所以 2/L″ 不是一个对所有损失都通用的公式。
+      回到地形：0.48 只描述这张地图上最陡方向的稳定性，换一张地图要重新估。
+    </p>
+
+    <h3>手算一遍：两种学习率</h3>
+
+    <p>仍用 <code>L(w) = w²</code>，导数 <code>2w</code>，最优解在 w = 0。</p>
+
+    <div class="math">
+      起点 w = 4，学习率 η = 0.1<br><br>
+      第 1 步：梯度 = 8，w ← 4 − 0.8 = <span class="hl">3.2</span><br>
+      第 2 步：梯度 = 6.4，w ← 3.2 − 0.64 = <span class="hl">2.56</span><br>
+      第 3 步：梯度 = 5.12，w ← 2.56 − 0.512 = <span class="hl">2.048</span><br><br>
+      每一步都朝 0 靠近，步子逐渐变小
+    </div>
+
+    <p>换成 η = 1.1，超过阈值 1：</p>
+
+    <div class="math">
+      第 1 步：w ← 4 − 1.1×8 = <span style="color:var(--red)">−4.8</span><br>
+      第 2 步：梯度 = −9.6，w ← −4.8 + 10.56 = <span style="color:var(--red)">5.76</span><br>
+      第 3 步：w ← 5.76 − 12.672 = <span style="color:var(--red)">−6.912</span><br><br>
+      |w| 越来越大，这就是发散
+    </div>
+
+    <h3>训练的完整循环</h3>
+
+    <ol>
+      <li><strong>前向传播</strong>：输入算一遍，得到预测概率</li>
+      <li><strong>算损失</strong>：看正确答案拿到的概率，算出 loss</li>
+      <li><strong>反向传播</strong>：用链式法则算出每个参数的梯度</li>
+      <li><strong>更新参数</strong>：往梯度反方向挪一小步</li>
+      <li>重复很多轮，每轮重新算一次梯度</li>
+    </ol>
+
+    <div class="warn">
+      <b>常见误解</b>
+      “模型在学习”听起来很智能，这里发生的其实只是数值调整：
+      算梯度、挪参数、再算梯度。模型没有理解这句话的意思，
+      所谓“学到了”，指的是参数落到了让 loss 更低的数值上。
+    </div>
+
+    <div class="key">
+      <b>小结</b>
+      训练 = 反复“算梯度、往反方向挪一小步”。
+      迷你输入法的第一步把 w 从 0.50 挪到 0.684。
+      学习率太大会震荡发散，太小会走得很慢。
+    </div>
+  </section>
